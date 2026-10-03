@@ -1,0 +1,80 @@
+# Folder ownership (CLAUDE.md section 0). Replace the placeholders with real GitHub usernames.
+# Later rules win, so each block lists only folders that member owns.
+
+# ---------- Member 01 - Accounts ----------
+/mobile/src/features/auth/                         @member01-username
+/mobile/src/features/profile/                      @member01-username
+/server/src/modules/auth/                          @member01-username
+/server/src/modules/users/                         @member01-username
+/server/src/modules/drivers/                       @member01-username
+/server/src/middleware/                            @member01-username
+/admin/src/pages/auth/                             @member01-username
+/admin/src/pages/drivers/                          @member01-username
+/docs/api/m01-accounts.md                          @member01-username
+/docs/testing/functional/m01-accounts.md           @member01-username
+/docs/evidence/m01/                                @member01-username
+
+# ---------- Member 02 - Routes & tracking ----------
+/mobile/src/features/routes/                       @member02-username
+/mobile/src/features/tracking/                     @member02-username
+/server/src/modules/routes/                        @member02-username
+/server/src/modules/buses/                         @member02-username
+/server/src/modules/trips/                         @member02-username
+/server/src/modules/tracking/                      @member02-username
+/server/src/modules/savedRoutes/                   @member02-username
+/admin/src/pages/routes/                           @member02-username
+/admin/src/pages/buses/                            @member02-username
+/admin/src/pages/fleet/                            @member02-username
+/docs/api/m02-routes-tracking.md                   @member02-username
+/docs/testing/functional/m02-routes-tracking.md    @member02-username
+/docs/evidence/m02/                                @member02-username
+
+# ---------- Member 03 - Tickets, seats, inquiries ----------
+/mobile/src/features/tickets/                      @member03-username
+/mobile/src/features/seats/                        @member03-username
+/mobile/src/features/payments/                     @member03-username
+/mobile/src/features/verification/                 @member03-username
+/mobile/src/features/inquiries/                    @member03-username
+/server/src/modules/tickets/                       @member03-username
+/server/src/modules/seats/                         @member03-username
+/server/src/modules/payments/                      @member03-username
+/server/src/modules/verification/                  @member03-username
+/server/src/modules/inquiries/                     @member03-username
+/admin/src/pages/finance/                          @member03-username
+/admin/src/pages/inquiries/                        @member03-username
+/docs/api/m03-tickets-inquiries.md                 @member03-username
+/docs/testing/functional/m03-tickets-inquiries.md  @member03-username
+/docs/evidence/m03/                                @member03-username
+
+# ---------- Member 04 - Home, notifications, delays, admin overview + shared shell ----------
+/mobile/src/features/home/                         @member04-username
+/mobile/src/features/notifications/                @member04-username
+/mobile/src/features/delay-reporting/              @member04-username
+/mobile/src/components/                            @member04-username
+/mobile/src/theme/                                 @member04-username
+/mobile/src/services/                              @member04-username
+/mobile/src/context/                               @member04-username
+/mobile/src/hooks/                                 @member04-username
+/mobile/src/utils/                                 @member04-username
+/mobile/app/                                       @member04-username
+/server/src/modules/home/                          @member04-username
+/server/src/modules/notifications/                 @member04-username
+/server/src/modules/alertSubscriptions/            @member04-username
+/server/src/modules/delays/                        @member04-username
+/server/src/modules/announcements/                 @member04-username
+/server/src/modules/recentSearches/                @member04-username
+/server/src/modules/dashboard/                     @member04-username
+/server/src/utils/                                 @member04-username
+/server/src/routeRegistry.js                       @member04-username
+/admin/src/pages/overview/                         @member04-username
+/admin/src/pages/delays/                           @member04-username
+/admin/src/pages/announcements/                    @member04-username
+/admin/src/pages/performance/                      @member04-username
+/admin/src/components/                             @member04-username
+/admin/src/theme/                                  @member04-username
+/admin/src/config/                                 @member04-username
+/docs/api/m04-operations.md                        @member04-username
+/docs/testing/functional/m04-operations.md         @member04-username
+/docs/evidence/m04/                                @member04-username
+/docs/design/                                      @member04-username
+/tooling/                                          @member04-username

@@ -1,0 +1,29 @@
+# Continuous integration: install + lint every package (and build the admin) on each pull request.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  lint-and-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [server, admin, mobile]
+    defaults:
+      run:
+        working-directory: ${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.package }}/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - name: Build admin dashboard
+        if: matrix.package == 'admin'
+        run: npm run build

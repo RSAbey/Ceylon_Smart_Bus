@@ -1,0 +1,15 @@
+{
+  "name": "ceylon-smart-bus",
+  "private": true,
+  "description": "Root helper scripts for the Ceylon Smart Bus monorepo (server, admin, mobile).",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "install:all": "npm --prefix server ci && npm --prefix admin ci && npm --prefix mobile ci",
+    "lint:all": "npm --prefix server run lint && npm --prefix admin run lint && npm --prefix mobile run lint",
+    "dev:server": "npm --prefix server run dev",
+    "dev:admin": "npm --prefix admin run dev",
+    "dev:mobile": "npm --prefix mobile run start"
+  }
+}
