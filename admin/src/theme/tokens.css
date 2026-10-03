@@ -1,0 +1,118 @@
+/* Design tokens as CSS variables — same values as mobile/src/theme (see docs/design/DESIGN_TOKENS.md). */
+:root {
+  /* Primary — Transit Blue */
+  --primary-100: #e6f0fa;
+  --primary-200: #c2dcf4;
+  --primary-300: #8fbeec;
+  --primary-400: #5299e0;
+  --primary-500: #1e75d5;
+  --primary-600: #0f4c81;
+  --primary-700: #0c3c67;
+  --primary-800: #092e4e;
+  --primary-900: #051c30;
+
+  /* Secondary — Action Amber/Orange */
+  --secondary-100: #fff3e6;
+  --secondary-200: #ffe0bd;
+  --secondary-300: #ffc585;
+  --secondary-400: #ffa347;
+  --secondary-500: #ff7a00;
+  --secondary-600: #e66700;
+  --secondary-700: #bf5300;
+  --secondary-800: #993f00;
+  --secondary-900: #662700;
+
+  /* Semantic */
+  --success-light: #ecfdf5;
+  --success-main: #10b981;
+  --success-dark: #047857;
+  --warning-light: #fffbeb;
+  --warning-main: #f59e0b;
+  --warning-dark: #b45309;
+  --error-light: #fef2f2;
+  --error-main: #ef4444;
+  --error-dark: #b91c1c;
+  --information-light: #eff6ff;
+  --information-main: #3b82f6;
+  --information-dark: #1d4ed8; /* not in the palette — see DESIGN_DEVIATIONS.md */
+
+  /* Neutrals & surfaces */
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-card: #ffffff;
+  --color-border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-disabled: #94a3b8;
+  --text-on-color: #ffffff;
+  --color-overlay: rgba(15, 23, 42, 0.5);
+
+  /* Typography — Inter (sizes are estimates; the PNG does not print them) */
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-size-display: 28px;
+  --line-height-display: 34px;
+  --font-size-heading1: 24px;
+  --line-height-heading1: 30px;
+  --font-size-heading2: 20px;
+  --line-height-heading2: 26px;
+  --font-size-heading3: 18px;
+  --line-height-heading3: 24px;
+  --font-size-section-heading: 13px;
+  --font-size-body-large: 16px;
+  --line-height-body-large: 24px;
+  --font-size-body-medium: 14px;
+  --line-height-body-medium: 20px;
+  --font-size-body-small: 13px;
+  --font-size-caption: 12px;
+  --line-height-caption: 16px;
+  --font-size-label: 12px;
+  --font-size-button: 16px;
+  --letter-spacing-section: 1.2px;
+  --letter-spacing-label: 1px;
+
+  /* Spacing (4-based) */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-xxl: 24px;
+  --space-xxxl: 32px;
+  --space-huge: 48px;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Sizes */
+  --min-touch-target: 44px;
+  --button-height-small: 36px;
+  --button-height-medium: 44px;
+  --button-height-large: 52px;
+  --sidebar-width: 248px;
+  --topbar-height: 64px;
+  --icon-size-small: 16px;
+  --icon-size-medium: 20px;
+  --icon-size-large: 24px;
+  --icon-size-xlarge: 32px;
+  --border-thin: 1px;
+  --border-thick: 2px;
+  --content-max-width: 1280px;
+  --modal-width: 480px;
+
+  /* Shadows (Primary Text colour) */
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-raised: 0 6px 16px rgba(15, 23, 42, 0.12);
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+}
