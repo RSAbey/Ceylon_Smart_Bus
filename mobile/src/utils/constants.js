@@ -3,6 +3,9 @@
 /** Requests slower than this fail with a "check your connection" error instead of hanging. */
 export const API_TIMEOUT_MS = 15000;
 
+/** Port the API listens on (server/.env PORT). Used to derive the dev API address from the Metro host. */
+export const API_PORT = 5000;
+
 /** Live bus position refresh — the API keeps positions at most 10 s old (NFR-01). */
 export const TRACKING_POLL_INTERVAL_MS = 5000;
 
