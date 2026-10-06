@@ -14,7 +14,11 @@ export const SEARCH_DEBOUNCE_MS = 400;
 
 export const SECURE_STORE_KEYS = Object.freeze({
   accessToken: 'ceylonSmartBus.accessToken',
+  /** "yes" when the user ticked Remember me, so the session survives closing the app. */
+  shouldRememberSession: 'ceylonSmartBus.shouldRememberSession',
 });
+
+export const REMEMBER_SESSION_FLAG = Object.freeze({ yes: 'yes', no: 'no' });
 
 /** Must match server/src/modules/users/user.constants.js. */
 export const USER_ROLES = Object.freeze({

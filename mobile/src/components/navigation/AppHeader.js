@@ -1,7 +1,7 @@
 // App header from the Navigation Components PNG: 64 px bar, 16 px insets, one leading pattern, max two trailing actions.
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { MIN_TOUCH_TARGET, colors, radii, sizes, spacing, typography } from '../../theme';
+import { MIN_TOUCH_TARGET, colors, fontFamilies, radii, sizes, spacing, typography } from '../../theme';
 import { getNameInitials } from '../../utils/formatters';
 
 const BRAND_TITLE = 'Ceylon Smart Bus';
@@ -68,10 +68,11 @@ function buildTrailingActions(headerProps) {
  * @param {Function} [props.onProfilePress] - Avatar button (standard variant).
  * @param {number} [props.unreadAlertCount] - Shows the unread dot on the bell when above 0.
  * @param {string} [props.userFullName] - Used for the avatar initials.
+ * @param {string} [props.stepLabel] - Progress text shown at the trailing edge, for example "1 of 4".
  * @returns {import('react').JSX.Element} The header.
  */
 export default function AppHeader(props) {
-  const { variant = 'standard', title, onBackPress, onProfilePress, userFullName } = props;
+  const { variant = 'standard', title, onBackPress, onProfilePress, userFullName, stepLabel } = props;
   const headerTitle = title || BRAND_TITLE;
   const hasBackButton = (variant === 'back' || variant === 'search') && Boolean(onBackPress);
   const trailingActions = buildTrailingActions(props);
@@ -82,6 +83,11 @@ export default function AppHeader(props) {
       <Text style={[typography.heading3, styles.titleText]} numberOfLines={1}>
         {headerTitle}
       </Text>
+      {Boolean(stepLabel) && (
+        <Text style={[typography.bodySmall, styles.stepText]} accessibilityLabel={`Step ${stepLabel}`}>
+          {stepLabel}
+        </Text>
+      )}
       {trailingActions.map((trailingAction) => (
         <HeaderIconButton
           key={trailingAction.key}
@@ -121,6 +127,10 @@ const styles = StyleSheet.create({
   titleText: {
     flex: 1,
     color: colors.text.primary,
+  },
+  stepText: {
+    color: colors.text.secondary,
+    fontFamily: fontFamilies.semiBold,
   },
   iconButton: {
     minWidth: MIN_TOUCH_TARGET,

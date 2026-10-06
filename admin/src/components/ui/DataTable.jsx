@@ -26,8 +26,9 @@ function renderTableCell(column, tableRow) {
  * @param {Function} [props.onRetry] - Retry handler for the error state.
  * @param {string} [props.emptyTitle] - Empty state headline.
  * @param {string} [props.emptyMessage] - Empty state explanation.
- * @param {Array<{label: string, icon?: import('react').ComponentType, onClick: Function, variant?: string}>} [props.rowActions]
- *   Buttons shown at the end of each row; onClick receives the row.
+ * @param {Array<{label: string, icon?: import('react').ComponentType, onClick: Function, variant?: string,
+ *   buildAriaLabel?: Function}>} [props.rowActions] Buttons shown at the end of each row; onClick receives
+ *   the row. buildAriaLabel(row) should name the row so screen readers can tell identical buttons apart.
  * @param {string} props.caption - Accessible table description.
  * @returns {import('react').JSX.Element} The table.
  */
@@ -102,6 +103,9 @@ export default function DataTable({
                             icon={rowAction.icon}
                             size="small"
                             variant={rowAction.variant || 'text'}
+                            ariaLabel={
+                              rowAction.buildAriaLabel ? rowAction.buildAriaLabel(tableRow) : undefined
+                            }
                             onClick={() => rowAction.onClick(tableRow)}
                           />
                         ))}

@@ -14,6 +14,11 @@ const otpVerificationSchema = new Schema(
     /** expiresAt: MongoDB deletes the row automatically at this time (TTL index below). */
     expiresAt: { type: Date, required: true },
     isUsed: { type: Boolean, default: false },
+    /**
+     * attemptCount: wrong guesses so far. Added beyond the original ERD so a 6-digit code cannot be
+     * brute-forced (NFR-07) and so the Verification screen can show "Remaining attempts: N".
+     */
+    attemptCount: { type: Number, default: 0, min: 0 },
   },
   { toJSON: buildToJsonOptions(['codeHash']) }
 );

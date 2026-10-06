@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { CircleAlert } from 'lucide-react';
 import Button from '../../components/ui/Button';
+import FormField from '../../components/ui/FormField';
 import { useAuth } from '../../context/AuthContext';
 import { ICON_SIZES } from '../../theme/iconSizes';
 
@@ -22,39 +23,6 @@ function validateLoginForm(identifier, password) {
   if (!identifier.trim()) formErrors.identifier = LOGIN_MESSAGES.identifierRequired;
   if (!password) formErrors.password = LOGIN_MESSAGES.passwordRequired;
   return formErrors;
-}
-
-/**
- * One labelled input with an icon + text error message.
- * @param {object} props - Component props.
- * @param {string} props.fieldId - Input id (links label and error).
- * @param {string} props.label - Visible label.
- * @param {string} [props.errorText] - Error under the field.
- * @param {object} props.inputProps - Props passed to <input>.
- * @returns {import('react').JSX.Element} Form field.
- */
-function LoginField({ fieldId, label, errorText, inputProps }) {
-  const errorId = `${fieldId}-error`;
-  return (
-    <div className="form-field">
-      <label htmlFor={fieldId} className="text-label text-muted">
-        {label}
-      </label>
-      <input
-        id={fieldId}
-        className={errorText ? 'form-field__input form-field__input--invalid' : 'form-field__input'}
-        aria-invalid={Boolean(errorText)}
-        aria-describedby={errorText ? errorId : undefined}
-        {...inputProps}
-      />
-      {errorText && (
-        <p id={errorId} className="form-field__error">
-          <CircleAlert size={ICON_SIZES.small} aria-hidden="true" />
-          {errorText}
-        </p>
-      )}
-    </div>
-  );
 }
 
 /**
@@ -102,27 +70,24 @@ export default function LoginPage() {
           <p className="text-muted">Manage routes, buses, delays and announcements.</p>
         </div>
 
-        <LoginField
+        <FormField
           fieldId="login-identifier"
           label="Email or mobile number"
+          fieldText={identifier}
+          onFieldTextChange={setIdentifier}
           errorText={fieldErrors.identifier}
-          inputProps={{
-            type: 'text',
-            autoComplete: 'username',
-            placeholder: 'admin@ceylonsmartbus.lk',
-            onChange: (changeEvent) => setIdentifier(changeEvent.target.value),
-          }}
+          autoComplete="username"
+          placeholder="admin@ceylonsmartbus.lk"
         />
-        <LoginField
+        <FormField
           fieldId="login-password"
           label="Password"
+          inputType="password"
+          fieldText={password}
+          onFieldTextChange={setPassword}
           errorText={fieldErrors.password}
-          inputProps={{
-            type: 'password',
-            autoComplete: 'current-password',
-            placeholder: 'Your password',
-            onChange: (changeEvent) => setPassword(changeEvent.target.value),
-          }}
+          autoComplete="current-password"
+          placeholder="Your password"
         />
 
         {loginErrorMessage && (

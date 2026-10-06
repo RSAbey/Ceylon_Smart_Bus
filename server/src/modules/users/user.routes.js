@@ -1,15 +1,16 @@
 // User endpoints mounted at /api/users (Member 01). Every route needs a signed-in user.
 const express = require('express');
 const userController = require('./user.controller');
+const { updateMyProfileValidationRules } = require('./user.validation');
 const authenticateToken = require('../../middleware/authenticateToken');
+const validateRequest = require('../../middleware/validateRequest');
 
 const userRouter = express.Router();
 
-userRouter.get('/me', authenticateToken, userController.getMyProfile);
+userRouter.use(authenticateToken);
 
-/**
- * Planned scope for Member 01 (documented in docs/api/m01-accounts.md when built):
- * - View/edit own profile (R/U) and delete own account (D)
- */
+userRouter.get('/me', userController.getMyProfile);
+userRouter.patch('/me', updateMyProfileValidationRules, validateRequest, userController.updateMyProfile);
+userRouter.delete('/me', userController.deleteMyAccount);
 
 module.exports = userRouter;

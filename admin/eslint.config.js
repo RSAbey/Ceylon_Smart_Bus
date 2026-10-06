@@ -41,6 +41,13 @@ export default [
     },
   },
   {
+    // FormField wraps <input>, whose controlled-input prop is named "value" by React.
+    files: ['src/components/ui/FormField.jsx'],
+    rules: {
+      'id-denylist': ['error', ...bannedIdentifiers.filter((bannedName) => bannedName !== 'value')],
+    },
+  },
+  {
     // Config files run in Node, not the browser.
     files: ['eslint.config.js', 'vite.config.js'],
     languageOptions: { globals: { ...globals.node } },
