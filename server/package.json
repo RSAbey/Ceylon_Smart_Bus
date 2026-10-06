@@ -11,7 +11,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "seed": "node src/seed/seedDatabase.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "simulate": "node src/seed/simulateBusMovement.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
