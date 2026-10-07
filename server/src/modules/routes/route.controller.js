@@ -59,6 +59,24 @@ async function getStopConnections(request, response) {
 }
 
 /**
+ * GET /api/admin/routes/table - every route with its stop count and recent delays, plus the counts
+ * behind the filter chips. Drafts and suspended routes are included, unlike the passenger search.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function listRoutesForAdmin(request, response) {
+  const [routes, statusCounts] = await Promise.all([
+    routeService.listRoutesForAdmin({
+      status: request.query.status,
+      searchText: request.query.search,
+    }),
+    routeService.countRoutesByStatus(),
+  ]);
+  sendResponse(response, 'Routes loaded.', { routes, statusCounts });
+}
+
+/**
  * POST /api/admin/routes — create a route with its stops.
  * @param {import('express').Request} request - Express request.
  * @param {import('express').Response} response - Express response.
@@ -93,6 +111,7 @@ async function deleteRoute(request, response) {
 
 module.exports = {
   searchRoutes: asyncHandler(searchRoutes),
+  listRoutesForAdmin: asyncHandler(listRoutesForAdmin),
   listStopNames: asyncHandler(listStopNames),
   getRouteDetails: asyncHandler(getRouteDetails),
   getStopConnections: asyncHandler(getStopConnections),

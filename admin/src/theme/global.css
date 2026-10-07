@@ -835,3 +835,75 @@ a {
   background: var(--success-light);
   color: var(--success-dark);
 }
+
+/* ---------------------------------------------------------------------------
+   Routes: two-column form rows and the ordered stop editor.
+   --------------------------------------------------------------------------- */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-lg);
+}
+
+.stop-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.stop-editor__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.stop-editor__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stop-editor__item {
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.stop-editor__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.stop-editor__number {
+  min-width: 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.stop-editor__name {
+  flex: 1;
+}
+
+.stop-editor__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-md);
+  padding: 0 var(--space-md) var(--space-md);
+  border-top: var(--border-thin) solid var(--color-border);
+}
+
+.stop-editor__error {
+  margin: 0;
+  color: var(--error-dark);
+}
+
+.cell-emphasis {
+  color: var(--warning-dark);
+  font-weight: 600;
+}

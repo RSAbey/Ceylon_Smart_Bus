@@ -88,6 +88,25 @@ only on paper.
 Existing rows in Atlas were backfilled: three buses given `BUS-001`–`BUS-003`, and both drivers
 given `dutyStatus: active` with `licenseClass: heavy_vehicle`.
 
+## 7. Route fields (admin Routes page)
+
+Group A, agreed 2026-10-08.
+
+| Table | Column | Type | Notes |
+|---|---|---|---|
+| `ROUTE` | `serviceStartTime` | string | "HH:MM" first departure |
+| `ROUTE` | `serviceEndTime` | string | "HH:MM" last departure |
+| `ROUTE` | `perKmRate` | number | Reference rate for repricing; stop fares stay authoritative |
+| `ROUTE` | `status` | enum | **`active \| inactive` replaced by `active \| draft \| suspended`** |
+| `ROUTE` | `updatedAt` | date | Timestamps turned on, for the "last updated" line |
+
+`inactive` was declared in the constants but never used anywhere in the code, so replacing it broke
+nothing. No stored route used it either, so the migration moved zero rows.
+
+**Draft is a real gate, not a label.** Passenger search and the stop-name picker both filter on
+`active`, so a draft route is invisible to passengers until an admin activates it, and a suspended
+one disappears again.
+
 ## What did NOT change
 
 No card data is stored. The demo card number, holder name, expiry and CVV are validated for shape and then

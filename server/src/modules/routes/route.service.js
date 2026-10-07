@@ -3,12 +3,15 @@ const Route = require('./route.model');
 const RouteStop = require('./routeStop.model');
 const Bus = require('../buses/bus.model');
 const Trip = require('../trips/trip.model');
-const { ROUTE_STATUSES } = require('./route.constants');
+const { ROUTE_STATUSES, DELAY_WINDOW_DAYS } = require('./route.constants');
 const { TRIP_STATUSES } = require('../trips/trip.constants');
+const DelayReport = require('../delays/delayReport.model');
+const { DELAY_REPORT_STATUSES } = require('../delays/delay.constants');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
 const FIRST_STOP_SEQUENCE = 1;
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * Escapes user input so a search term cannot act as a regular expression.
@@ -121,6 +124,113 @@ async function findRunningTripsOnRoute(routeId) {
   return Trip.find({ routeId, status: TRIP_STATUSES.ONGOING }).populate('busId');
 }
 
+
+/**
+ * How often a route has been reported late recently, and by how much on average. The admin table
+ * uses it to spot a schedule that no longer matches reality.
+ * @param {string} routeId - Route to measure.
+ * @returns {Promise<{delayReportCount: number, averageDelayMinutes: number}>} Delay summary.
+ */
+async function summariseRecentDelays(routeId) {
+  const windowStart = new Date(Date.now() - DELAY_WINDOW_DAYS * MILLISECONDS_PER_DAY);
+  const routeTrips = await Trip.find({ routeId, startedAt: { $gte: windowStart } }).select('_id');
+  if (routeTrips.length === 0) return { delayReportCount: 0, averageDelayMinutes: 0 };
+
+  const delayReports = await DelayReport.find({
+    tripId: { $in: routeTrips.map((routeTrip) => routeTrip.id) },
+    status: { $ne: DELAY_REPORT_STATUSES.CANCELLED },
+  }).select('delayMinutes');
+
+  if (delayReports.length === 0) return { delayReportCount: 0, averageDelayMinutes: 0 };
+  const totalMinutes = delayReports.reduce(
+    (runningTotal, delayReport) => runningTotal + delayReport.delayMinutes,
+    0
+  );
+  return {
+    delayReportCount: delayReports.length,
+    averageDelayMinutes: Math.round(totalMinutes / delayReports.length),
+  };
+}
+
+/**
+ * Every route for the admin table, with the stop count and recent delays each row shows.
+ * Unlike the passenger search this returns drafts and suspended routes too.
+ * @param {object} [listOptions] - Optional status filter and free-text search.
+ * @param {string} [listOptions.status] - One of ROUTE_STATUSES.
+ * @param {string} [listOptions.searchText] - Matched against number, name, origin or destination.
+ * @returns {Promise<object[]>} Rows for the admin routes table.
+ */
+async function listRoutesForAdmin({ status, searchText } = {}) {
+  const routeFilter = {};
+  if (status) routeFilter.status = status;
+  if (searchText) {
+    const searchPattern = buildSearchPattern(searchText);
+    routeFilter.$or = [
+      { routeNumber: searchPattern },
+      { routeName: searchPattern },
+      { origin: searchPattern },
+      { destination: searchPattern },
+    ];
+  }
+
+  const routes = await Route.find(routeFilter).sort({ routeNumber: 1 });
+  return Promise.all(
+    routes.map(async (candidateRoute) => {
+      const [stopCount, delaySummary, runningTripCount] = await Promise.all([
+        RouteStop.countDocuments({ routeId: candidateRoute.id }),
+        summariseRecentDelays(candidateRoute.id),
+        Trip.countDocuments({ routeId: candidateRoute.id, status: TRIP_STATUSES.ONGOING }),
+      ]);
+      return {
+        route: candidateRoute,
+        stopCount,
+        runningTripCount,
+        delayWindowDays: DELAY_WINDOW_DAYS,
+        ...delaySummary,
+      };
+    })
+  );
+}
+
+/**
+ * Counts how many routes sit in each status, for the filter chips above the table.
+ * @returns {Promise<object>} A count per ROUTE_STATUSES value.
+ */
+async function countRoutesByStatus() {
+  const groupedRows = await Route.aggregate([{ $group: { _id: '$status', total: { $sum: 1 } } }]);
+  const countsByStatus = { total: 0 };
+  Object.values(ROUTE_STATUSES).forEach((statusValue) => {
+    countsByStatus[statusValue] = 0;
+  });
+  groupedRows.forEach((groupedRow) => {
+    countsByStatus[groupedRow._id] = groupedRow.total;
+    countsByStatus.total += groupedRow.total;
+  });
+  return countsByStatus;
+}
+
+/**
+ * Refuses to take a route out of service while a bus is still running on it, because passengers
+ * are tracking that bus and may hold tickets for the trip.
+ * @param {object} editableRoute - Route being changed.
+ * @param {string} nextStatus - Status the admin chose.
+ * @returns {Promise<void>} Resolves when the change is safe.
+ */
+async function assertRouteStatusChangeIsSafe(editableRoute, nextStatus) {
+  if (nextStatus === ROUTE_STATUSES.ACTIVE) return;
+  const runningTripCount = await Trip.countDocuments({
+    routeId: editableRoute.id,
+    status: TRIP_STATUSES.ONGOING,
+  });
+  if (runningTripCount > 0) {
+    throw new AppError(
+      `Route ${editableRoute.routeNumber} has a bus running on it right now. End the trip before taking the route out of service.`,
+      HTTP_STATUS.CONFLICT,
+      [{ field: 'status', message: 'A bus is carrying passengers on this route.' }]
+    );
+  }
+}
+
 /**
  * Replaces a route's stop list with a new ordered set. Sequences are renumbered from 1 so an admin
  * can reorder stops without worrying about gaps.
@@ -161,6 +271,9 @@ async function createRoute(routeDetails) {
     origin: routeDetails.origin.trim(),
     destination: routeDetails.destination.trim(),
     baseFare: routeDetails.baseFare,
+    perKmRate: routeDetails.perKmRate,
+    serviceStartTime: routeDetails.serviceStartTime,
+    serviceEndTime: routeDetails.serviceEndTime,
     status: routeDetails.status,
   });
   const stops = await replaceRouteStops(createdRoute.id, routeDetails.stops);
@@ -191,7 +304,17 @@ async function updateRoute(routeId, routeChanges) {
     if (routeChanges[fieldName] !== undefined) editableRoute[fieldName] = routeChanges[fieldName].trim();
   });
   if (routeChanges.baseFare !== undefined) editableRoute.baseFare = routeChanges.baseFare;
-  if (routeChanges.status !== undefined) editableRoute.status = routeChanges.status;
+  if (routeChanges.perKmRate !== undefined) editableRoute.perKmRate = routeChanges.perKmRate;
+  if (routeChanges.serviceStartTime !== undefined) {
+    editableRoute.serviceStartTime = routeChanges.serviceStartTime;
+  }
+  if (routeChanges.serviceEndTime !== undefined) {
+    editableRoute.serviceEndTime = routeChanges.serviceEndTime;
+  }
+  if (routeChanges.status !== undefined) {
+    await assertRouteStatusChangeIsSafe(editableRoute, routeChanges.status);
+    editableRoute.status = routeChanges.status;
+  }
   await editableRoute.save();
 
   const stops = routeChanges.stops
@@ -221,6 +344,8 @@ async function deleteRoute(routeId) {
 
 module.exports = {
   getRouteWithStops,
+  listRoutesForAdmin,
+  countRoutesByStatus,
   searchRoutes,
   listStopNames,
   findRouteNumbersServingStop,

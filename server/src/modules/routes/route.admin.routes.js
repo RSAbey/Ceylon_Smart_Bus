@@ -13,6 +13,8 @@ const routeAdminRouter = express.Router();
 routeAdminRouter.use(authenticateToken, authorizeRoles(USER_ROLES.ADMIN));
 
 routeAdminRouter.get('/', routeController.searchRoutes);
+// Must sit above /:routeId so "table" is never read as a route id.
+routeAdminRouter.get('/table', routeController.listRoutesForAdmin);
 routeAdminRouter.get('/:routeId', routeController.getRouteDetails);
 routeAdminRouter.post('/', createRouteValidationRules, validateRequest, routeController.createRoute);
 routeAdminRouter.patch('/:routeId', updateRouteValidationRules, validateRequest, routeController.updateRoute);

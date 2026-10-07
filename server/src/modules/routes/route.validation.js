@@ -1,6 +1,6 @@
 // express-validator rules for route management (Member 02).
 const { body } = require('express-validator');
-const { ROUTE_STATUSES } = require('./route.constants');
+const { ROUTE_STATUSES, SERVICE_TIME_PATTERN } = require('./route.constants');
 
 const MIN_STOPS_PER_ROUTE = 2;
 const MIN_LATITUDE = -90;
@@ -29,6 +29,19 @@ const createRouteValidationRules = [
   body('origin').trim().notEmpty().withMessage('Enter the starting point.'),
   body('destination').trim().notEmpty().withMessage('Enter the destination.'),
   body('baseFare').isFloat({ min: 0 }).withMessage('Enter the base fare in rupees.'),
+  body('perKmRate')
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0 })
+    .withMessage('Enter the per-kilometre rate in rupees.'),
+  body('serviceStartTime')
+    .optional({ values: 'falsy' })
+    .matches(SERVICE_TIME_PATTERN)
+    .withMessage('Enter the first departure as HH:MM, for example 05:00.'),
+  body('serviceEndTime')
+    .optional({ values: 'falsy' })
+    .matches(SERVICE_TIME_PATTERN)
+    .withMessage('Enter the last departure as HH:MM, for example 22:30.'),
+
   body('status')
     .optional()
     .isIn(Object.values(ROUTE_STATUSES))
@@ -42,6 +55,19 @@ const updateRouteValidationRules = [
   body('origin').optional().trim().notEmpty().withMessage('Enter the starting point.'),
   body('destination').optional().trim().notEmpty().withMessage('Enter the destination.'),
   body('baseFare').optional().isFloat({ min: 0 }).withMessage('Enter the base fare in rupees.'),
+  body('perKmRate')
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0 })
+    .withMessage('Enter the per-kilometre rate in rupees.'),
+  body('serviceStartTime')
+    .optional({ values: 'falsy' })
+    .matches(SERVICE_TIME_PATTERN)
+    .withMessage('Enter the first departure as HH:MM, for example 05:00.'),
+  body('serviceEndTime')
+    .optional({ values: 'falsy' })
+    .matches(SERVICE_TIME_PATTERN)
+    .withMessage('Enter the last departure as HH:MM, for example 22:30.'),
+
   body('status')
     .optional()
     .isIn(Object.values(ROUTE_STATUSES))
