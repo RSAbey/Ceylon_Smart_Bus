@@ -9,4 +9,7 @@ const NOTIFICATION_TYPES = Object.freeze({
   INQUIRY_REPLY: 'inquiry_reply',
 });
 
-module.exports = { NOTIFICATION_TYPES };
+/** Rows per page in the Alerts feed, so a long history never arrives in one response. */
+const NOTIFICATION_PAGE_SIZE = 20;
+
+module.exports = { NOTIFICATION_TYPES, NOTIFICATION_PAGE_SIZE };
