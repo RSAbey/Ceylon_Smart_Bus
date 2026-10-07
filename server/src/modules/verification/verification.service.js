@@ -7,6 +7,7 @@ const ticketService = require('../tickets/ticket.service');
 const tripService = require('../trips/trip.service');
 const seatService = require('../seats/seat.service');
 const RouteStop = require('../routes/routeStop.model');
+const Route = require('../routes/route.model');
 const { VERIFICATION_METHODS, VERIFICATION_RESULTS } = require('./verification.constants');
 const { TICKET_STATUSES } = require('../tickets/ticket.constants');
 const { PAYMENT_STATUSES } = require('../payments/payment.constants');
@@ -54,11 +55,12 @@ async function recordVerification({
  * @returns {Promise<object>} Summary for the driver's screen.
  */
 async function buildDriverTicketSummary(ticket) {
-  const [boardingStop, alightingStop, seatNumbers, passengerTicket] = await Promise.all([
+  const [boardingStop, alightingStop, seatNumbers, passengerTicket, ticketRoute] = await Promise.all([
     RouteStop.findById(ticket.boardingStopId),
     RouteStop.findById(ticket.alightingStopId),
     seatService.getSeatsForTicket(ticket.id),
     Ticket.findById(ticket.id).populate('userId', 'fullName'),
+    Route.findById(ticket.routeId).select('routeNumber origin destination'),
   ]);
 
   return {
@@ -70,6 +72,10 @@ async function buildDriverTicketSummary(ticket) {
     seatNumbers,
     fareAmount: ticket.fareAmount,
     status: ticket.status,
+    routeNumber: ticketRoute?.routeNumber || null,
+    origin: ticketRoute?.origin || null,
+    destination: ticketRoute?.destination || null,
+    validUntil: ticket.validUntil,
   };
 }
 

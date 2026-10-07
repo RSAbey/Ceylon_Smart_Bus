@@ -47,3 +47,12 @@ export async function topUpWallet(topUpDetails) {
   const walletEnvelope = await apiClient.post('/payments/wallet/topup', topUpDetails);
   return walletEnvelope.data;
 }
+
+/**
+ * What the signed-in driver has collected today, split cash against digital.
+ * @returns {Promise<object>} Shift totals and the latest transactions.
+ */
+export async function fetchShiftSummary() {
+  const shiftEnvelope = await apiClient.get('/payments/shift');
+  return shiftEnvelope.data;
+}

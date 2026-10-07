@@ -10,3 +10,24 @@ export async function fetchSeatMap(tripId) {
   const seatEnvelope = await apiClient.get(`/seats/trip/${tripId}`);
   return seatEnvelope.data;
 }
+
+/**
+ * Who has reserved a seat on the trip the driver is running.
+ * @returns {Promise<object>} Seat counts, the accepting-bookings flag and a row per booking.
+ */
+export async function fetchTripBookings() {
+  const bookingEnvelope = await apiClient.get('/seats/bookings');
+  return bookingEnvelope.data;
+}
+
+/**
+ * Opens or closes the running trip to new seat reservations.
+ * @param {boolean} isAcceptingBookings - Whether to keep taking reservations.
+ * @returns {Promise<object>} The updated booking overview.
+ */
+export async function setAcceptingBookings(isAcceptingBookings) {
+  const bookingEnvelope = await apiClient.patch('/seats/bookings/accepting', {
+    isAcceptingBookings,
+  });
+  return bookingEnvelope.data;
+}

@@ -89,6 +89,13 @@ async function getTicketableTrip(tripId) {
   if (matchingTrip.status !== TRIP_STATUSES.ONGOING) {
     throw new AppError('This bus has finished its trip. Pick a bus that is running.', HTTP_STATUS.CONFLICT);
   }
+  // The driver can close a full or nearly-full bus to new reservations from their Bookings screen.
+  if (!matchingTrip.isAcceptingBookings) {
+    throw new AppError(
+      'This bus is not taking seat reservations right now. You can still board and pay the conductor.',
+      HTTP_STATUS.CONFLICT
+    );
+  }
   return matchingTrip;
 }
 
@@ -341,7 +348,7 @@ async function listBookableTrips() {
 
   const bookableTrips = await Promise.all(
     runningTrips
-      .filter((runningTrip) => runningTrip.busId && runningTrip.routeId)
+      .filter((runningTrip) => runningTrip.busId && runningTrip.routeId && runningTrip.isAcceptingBookings)
       .map(async (runningTrip) => {
         const bookedSeatCount = await seatService.countBookedSeats(runningTrip.id);
         return {

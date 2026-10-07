@@ -8,7 +8,7 @@ export const HOME_QUICK_ACTIONS = Object.freeze({
       label: 'My trip',
       hint: 'Start or end your run',
       iconName: 'play-circle-outline',
-      route: '/(driver)/(tabs)/trip',
+      route: '/(driver)/(tabs)/live',
       accessibilityLabel: 'My trip: start or end your run',
     },
     {
@@ -16,7 +16,7 @@ export const HOME_QUICK_ACTIONS = Object.freeze({
       label: 'Report delay',
       hint: 'Tell passengers you are late',
       iconName: 'alert-circle-outline',
-      route: '/(driver)/(tabs)/delay-report',
+      route: '/(driver)/delay-report',
       accessibilityLabel: 'Report a delay to passengers',
     },
     {
@@ -24,7 +24,7 @@ export const HOME_QUICK_ACTIONS = Object.freeze({
       label: 'Verify ticket',
       hint: 'Scan a passenger QR code',
       iconName: 'qr-code-outline',
-      route: '/(driver)/(tabs)/verify-ticket',
+      route: '/(driver)/(tabs)/scan',
       accessibilityLabel: 'Verify a passenger ticket',
     },
     {

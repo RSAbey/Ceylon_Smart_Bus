@@ -37,3 +37,21 @@ export function describeSeatCount(seatNumbers) {
   if (seatNumbers.length === 0) return 'No seats selected';
   return `${seatNumbers.length} ${seatNumbers.length === 1 ? 'seat' : 'seats'} selected`;
 }
+
+/** StatusBadge status + wording for each booking state on the driver's Bookings screen. */
+export const BOOKING_BADGES = Object.freeze({
+  confirmed: { status: 'valid', label: 'Confirmed' },
+  pending: { status: 'delayed', label: 'Pending' },
+  cancelled: { status: 'cancelled', label: 'Cancelled' },
+});
+
+export const BOOKING_MESSAGES = Object.freeze({
+  title: 'Bookings',
+  acceptTitle: 'Accept New Bookings',
+  acceptHint: 'Passengers can reserve a seat on this trip',
+  availabilityHeading: 'Seat availability',
+  todaysHeading: "Today's bookings",
+  closedNote: 'When bookings are disabled, passengers see this trip as "walk-on only" in the app.',
+  noBookings: 'No seats reserved on this trip yet.',
+  noTrip: 'Start your trip to see and manage its bookings.',
+});

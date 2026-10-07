@@ -20,6 +20,12 @@ export const VERIFICATION_MODES = Object.freeze([
 /** Only this QR format is accepted, and it is what the passenger's ticket screen encodes. */
 export const QR_PAYLOAD_TYPE = 'ceylon-smart-bus-ticket';
 
+/** The two banner states on the result screen: wording, icon and which palette colour to use. */
+export const VERIFICATION_BANNERS = Object.freeze({
+  valid: { headline: 'VALID TICKET', iconName: 'checkmark', tone: 'success' },
+  invalid: { headline: 'INVALID TICKET', iconName: 'close', tone: 'error' },
+});
+
 export const VERIFICATION_MESSAGES = Object.freeze({
   cameraNeeded: 'Allow camera access to scan ticket QR codes, or type the ticket code instead.',
   cameraDenied: 'Camera access is off. Type the ticket code instead, or turn the camera on in Settings.',
@@ -28,4 +34,9 @@ export const VERIFICATION_MESSAGES = Object.freeze({
   typeHint: 'Ticket codes look like CSB-408213.',
   scanAnother: 'Check another ticket',
   noChecksYet: 'No tickets checked on this trip yet.',
+  scanNext: 'Scan next',
+  enterManually: 'Enter code manually',
+  shiftTotals: 'Shift totals',
+  noTripTitle: 'Start your trip first',
+  noTripMessage: 'Tickets are checked against the bus you are driving, so start your run before scanning.',
 });

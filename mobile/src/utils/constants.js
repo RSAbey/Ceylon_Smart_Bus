@@ -33,7 +33,7 @@ export const USER_ROLES = Object.freeze({
 /** Landing route for each role after sign-in. */
 export const ROLE_HOME_ROUTES = Object.freeze({
   [USER_ROLES.PASSENGER]: '/(passenger)/(tabs)/home',
-  [USER_ROLES.DRIVER]: '/(driver)/(tabs)/dashboard',
+  [USER_ROLES.DRIVER]: '/(driver)/(tabs)/home',
 });
 
 export const LOGIN_ROUTE = '/(auth)/login';

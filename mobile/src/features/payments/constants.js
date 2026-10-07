@@ -63,6 +63,21 @@ export const PAYMENT_MESSAGES = Object.freeze({
   paid: 'Payment successful. Your ticket is ready.',
 });
 
+/** Wording on the driver's Current Shift screen. */
+export const SHIFT_MESSAGES = Object.freeze({
+  title: 'Current Shift',
+  totalTransactions: 'Total transactions',
+  shiftTotal: 'Shift total',
+  cashTotal: 'Cash total',
+  digitalTotal: 'Digital total',
+  recentHeading: 'Recent transactions',
+  noTransactions: 'No fares collected on this shift yet.',
+  noShift: 'You have not run a trip today, so there is nothing to total yet.',
+});
+
+/** How many transactions the server returns for the list; used to word the "latest 5 of 78" line. */
+export const SHIFT_RECENT_LIMIT = 5;
+
 /** Empty-state copy for the payment-history list. */
 export const PAYMENTS_EMPTY = Object.freeze({
   title: 'No payments yet',

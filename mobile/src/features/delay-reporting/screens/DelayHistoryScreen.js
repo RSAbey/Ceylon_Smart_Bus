@@ -78,7 +78,7 @@ export default function DelayHistoryScreen() {
           title={DELAY_HISTORY_EMPTY.title}
           message={DELAY_HISTORY_EMPTY.message}
           actionLabel="Report a delay"
-          onActionPress={() => router.push('/(driver)/(tabs)/delay-report')}
+          onActionPress={() => router.push('/(driver)/delay-report')}
         />
       </ScreenContainer>
     );

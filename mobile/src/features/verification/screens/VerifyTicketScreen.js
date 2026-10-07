@@ -1,27 +1,22 @@
-// Verify Ticket (Member 03, FR-09): the driver scans a passenger's QR code, or types the ticket
-// code when the camera cannot read it. Both ways live on this one screen (NFR-06).
+// Verify Ticket (Member 03, FR-09): the driver scans a passenger QR code, or types the ticket code
+// when the camera cannot read it. Both ways live on this one screen (NFR-06).
+// The screen has two faces: the scanner, and the valid/invalid answer.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
-import AppHeader from '../../../components/navigation/AppHeader';
 import AppCard from '../../../components/ui/AppCard';
 import AppButton from '../../../components/ui/AppButton';
 import AppTextInput from '../../../components/ui/AppTextInput';
-import StatusBadge from '../../../components/ui/StatusBadge';
 import LoadingState from '../../../components/feedback/LoadingState';
-import { useDrawer } from '../../../components/navigation/DrawerContext';
-import { CURRENCY_PREFIX } from '../../tickets/constants';
+import VerificationResult from '../components/VerificationResult';
 import { MIN_TOUCH_TARGET, colors, radii, sizes, spacing, typography } from '../../../theme';
-import { fetchMyVerifications, verifyTicket } from '../services/verificationApi';
-import {
-  QR_PAYLOAD_TYPE,
-  VERIFICATION_MESSAGES,
-  VERIFICATION_METHODS,
-  VERIFICATION_MODES,
-  VERIFICATION_RESULTS,
-} from '../constants';
+import { formatValidUntil } from '../../tickets/formatters';
+import { fetchMyTripOverview } from '../../tracking/services/trackingApi';
+import { verifyTicket } from '../services/verificationApi';
+import { QR_PAYLOAD_TYPE, VERIFICATION_MESSAGES } from '../constants';
 
 /**
  * Reads a scanned QR code and pulls out the ticket fields, or returns null when it is not one of ours.
@@ -41,84 +36,38 @@ function readTicketQrCode(scannedText) {
 }
 
 /**
- * The answer card shown after a check: a clear icon, wording and colour together.
- * @param {object} props - Component props.
- * @param {object} props.verification - What the server replied.
- * @param {Function} props.onCheckAnother - Clears the result so the scanner is ready again.
- * @returns {import('react').JSX.Element} The result card.
- */
-function VerificationResultCard({ verification, onCheckAnother }) {
-  return (
-    <AppCard>
-      <View style={styles.resultHeaderRow}>
-        <Ionicons
-          name={verification.isValid ? 'checkmark-circle' : 'close-circle'}
-          size={sizes.iconHuge}
-          color={verification.isValid ? colors.success.dark : colors.error.dark}
-        />
-        <View style={styles.resultHeaderText}>
-          <Text style={typography.heading3}>
-            {verification.isValid ? 'Valid ticket' : 'Not valid'}
-          </Text>
-          <Text style={[typography.bodyMedium, styles.mutedText]}>{verification.reason}</Text>
-        </View>
-      </View>
-
-      {verification.ticket && (
-        <View style={styles.resultDetailBlock}>
-          <Text style={typography.bodyLarge}>{verification.ticket.passengerName}</Text>
-          <Text style={[typography.bodySmall, styles.mutedText]}>
-            {verification.ticket.boardingStopName} to {verification.ticket.alightingStopName}
-          </Text>
-          <Text style={[typography.bodySmall, styles.mutedText]}>
-            {verification.ticket.seatNumbers?.length === 1 ? 'Seat' : 'Seats'}{' '}
-            {verification.ticket.seatNumbers?.join(', ') || 'released'} · {CURRENCY_PREFIX}{' '}
-            {verification.ticket.fareAmount} · {verification.ticket.ticketKey}
-          </Text>
-        </View>
-      )}
-
-      <AppButton
-        label={VERIFICATION_MESSAGES.scanAnother}
-        size="large"
-        isFullWidth
-        iconName="refresh"
-        onPress={onCheckAnother}
-      />
-    </AppCard>
-  );
-}
-
-/**
  * The driver's ticket checking screen.
  * @returns {import('react').JSX.Element} The screen.
  */
 export default function VerifyTicketScreen() {
-  const drawer = useDrawer();
+  const router = useRouter();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
-  const [activeMethod, setActiveMethod] = useState(VERIFICATION_METHODS.QR);
-  const [typedTicketKey, setTypedTicketKey] = useState('');
+  const [tripOverview, setTripOverview] = useState(null);
   const [verification, setVerification] = useState(null);
-  const [recentChecks, setRecentChecks] = useState([]);
+  const [isCodeEntryOpen, setIsCodeEntryOpen] = useState(false);
+  const [typedTicketKey, setTypedTicketKey] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [checkErrorMessage, setCheckErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [reloadCounter, setReloadCounter] = useState(0);
 
-  const reloadRecentChecks = useCallback(
-    () => setReloadCounter((previousCount) => previousCount + 1),
-    []
-  );
+  const reloadTrip = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
+
+  // The driver may have started or ended the trip on another tab, so re-check on focus.
+  useFocusEffect(reloadTrip);
 
   useEffect(() => {
     let isEffectActive = true;
-    fetchMyVerifications()
-      .then((loadedChecks) => {
-        if (isEffectActive) setRecentChecks(loadedChecks);
+    fetchMyTripOverview()
+      .then((loadedOverview) => {
+        if (isEffectActive) setTripOverview(loadedOverview);
       })
       .catch(() => {
-        // The recent list is a convenience; failing to load it must not block checking tickets.
-        if (isEffectActive) setRecentChecks([]);
+        if (isEffectActive) setTripOverview(null);
+      })
+      .finally(() => {
+        if (isEffectActive) setIsLoading(false);
       });
     return () => {
       isEffectActive = false;
@@ -130,27 +79,24 @@ export default function VerifyTicketScreen() {
    * @param {object} checkRequest - ticketKey, plus qrSignature when it came from a scan.
    * @returns {Promise<void>} Resolves once the answer is stored.
    */
-  const runCheck = useCallback(
-    async (checkRequest) => {
-      setIsChecking(true);
-      setCheckErrorMessage('');
-      try {
-        const checkAnswer = await verifyTicket(checkRequest);
-        setVerification(checkAnswer);
-        setTypedTicketKey('');
-        reloadRecentChecks();
-      } catch (checkError) {
-        setCheckErrorMessage(checkError.message);
-      } finally {
-        setIsChecking(false);
-      }
-    },
-    [reloadRecentChecks]
-  );
+  const runCheck = useCallback(async (checkRequest) => {
+    setIsChecking(true);
+    setCheckErrorMessage('');
+    try {
+      const checkAnswer = await verifyTicket(checkRequest);
+      setVerification(checkAnswer);
+      setTypedTicketKey('');
+      setIsCodeEntryOpen(false);
+    } catch (checkError) {
+      setCheckErrorMessage(checkError.message);
+    } finally {
+      setIsChecking(false);
+    }
+  }, []);
 
   /**
-   * Handles a QR code coming from the camera. Ignored while a result is on screen so one code is
-   * not checked over and over.
+   * Handles a QR code from the camera. Ignored while an answer is on screen, so one code is not
+   * checked over and over while the driver reads the result.
    * @param {object} scanEvent - What the camera read.
    * @param {string} scanEvent.data - Raw text inside the QR code.
    * @returns {void}
@@ -165,250 +111,325 @@ export default function VerifyTicketScreen() {
     runCheck(scannedTicket);
   }
 
+  const runningRoute = tripOverview?.route;
   const screenHeader = (
-    <AppHeader
-      variant="back"
-      title="Verify Ticket"
-      onMenuPress={drawer ? drawer.openDrawer : undefined}
-    />
-  );
-
-  const methodToggle = (
-    <View style={styles.toggleRow}>
-      {VERIFICATION_MODES.map((verificationMode) => {
-        const isActiveMode = verificationMode.method === activeMethod;
-        return (
-          <Pressable
-            key={verificationMode.method}
-            onPress={() => {
-              setActiveMethod(verificationMode.method);
-              setCheckErrorMessage('');
-            }}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActiveMode }}
-            accessibilityLabel={verificationMode.label}
-            style={[styles.toggleButton, isActiveMode && styles.toggleButtonActive]}
-          >
-            <Ionicons
-              name={verificationMode.iconName}
-              size={sizes.iconMedium}
-              color={isActiveMode ? colors.primary[600] : colors.text.secondary}
-            />
-            <Text style={[typography.label, isActiveMode && styles.toggleTextActive]}>
-              {verificationMode.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.header}>
+      <View style={styles.headerTextBlock}>
+        <Text style={typography.heading2}>Verify Ticket</Text>
+        {runningRoute && (
+          <Text style={[typography.bodySmall, styles.mutedText]}>
+            Bus {runningRoute.routeNumber}, {runningRoute.origin} &#8594; {runningRoute.destination}
+          </Text>
+        )}
+      </View>
+      <AppButton
+        label={VERIFICATION_MESSAGES.shiftTotals}
+        variant="outline"
+        size="small"
+        iconName="receipt-outline"
+        onPress={() => router.push('/(driver)/shift')}
+      />
     </View>
   );
 
-  if (!cameraPermission) {
+  const codeEntryDialog = (
+    <Modal
+      visible={isCodeEntryOpen}
+      animationType="slide"
+      transparent
+      onRequestClose={() => setIsCodeEntryOpen(false)}
+    >
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeaderRow}>
+            <Text style={typography.heading3}>Enter ticket code</Text>
+            <AppButton
+              label="Close"
+              variant="text"
+              size="small"
+              onPress={() => setIsCodeEntryOpen(false)}
+            />
+          </View>
+          <AppTextInput
+            label="Ticket code"
+            value={typedTicketKey}
+            onChangeText={setTypedTicketKey}
+            helperText={VERIFICATION_MESSAGES.typeHint}
+            iconName="keypad-outline"
+            autoCapitalize="characters"
+          />
+          <AppButton
+            label="Check this ticket"
+            size="large"
+            isFullWidth
+            isLoading={isChecking}
+            isDisabled={typedTicketKey.trim().length === 0}
+            onPress={() => runCheck({ ticketKey: typedTicketKey.trim().toUpperCase() })}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+
+  if (isLoading || !cameraPermission) {
     return (
       <ScreenContainer header={screenHeader}>
-        <LoadingState message="Checking camera access..." />
+        <LoadingState message="Getting the scanner ready..." />
+      </ScreenContainer>
+    );
+  }
+
+  // Without a running trip the server has no bus to check a ticket against, so say so up front.
+  if (!tripOverview?.isTripRunning) {
+    return (
+      <ScreenContainer header={screenHeader}>
+        <AppCard>
+          <View style={styles.noTripBlock}>
+            <Ionicons name="bus-outline" size={sizes.iconHuge} color={colors.text.secondary} />
+            <Text style={typography.heading3}>{VERIFICATION_MESSAGES.noTripTitle}</Text>
+            <Text style={[typography.bodyMedium, styles.centredText]}>
+              {VERIFICATION_MESSAGES.noTripMessage}
+            </Text>
+          </View>
+        </AppCard>
+        <AppButton
+          label="Go to my trip"
+          size="large"
+          isFullWidth
+          iconName="play-circle-outline"
+          onPress={() => router.push('/(driver)/(tabs)/live')}
+        />
+      </ScreenContainer>
+    );
+  }
+
+  if (verification) {
+    return (
+      <ScreenContainer
+        isScrollable
+        header={screenHeader}
+        footer={
+          <View style={styles.footerBar}>
+            <AppButton
+              label={VERIFICATION_MESSAGES.scanNext}
+              size="large"
+              isFullWidth
+              onPress={() => {
+                setVerification(null);
+                setCheckErrorMessage('');
+              }}
+            />
+            <AppButton
+              label={VERIFICATION_MESSAGES.enterManually}
+              variant="outline"
+              size="large"
+              isFullWidth
+              onPress={() => {
+                setVerification(null);
+                setIsCodeEntryOpen(true);
+              }}
+            />
+          </View>
+        }
+      >
+        <VerificationResult
+          verification={verification}
+          validUntilText={
+            verification.ticket?.validUntil ? formatValidUntil(verification.ticket.validUntil) : ''
+          }
+        />
+        {codeEntryDialog}
       </ScreenContainer>
     );
   }
 
   return (
-    <ScreenContainer isScrollable header={screenHeader}>
-      {methodToggle}
-
-      {verification ? (
-        <VerificationResultCard
-          verification={verification}
-          onCheckAnother={() => {
-            setVerification(null);
-            setCheckErrorMessage('');
-          }}
-        />
-      ) : (
-        <AppCard>
-          {activeMethod === VERIFICATION_METHODS.QR ? (
-            <View>
-              {cameraPermission.granted ? (
-                <View style={styles.cameraFrame}>
-                  <CameraView
-                    style={styles.camera}
-                    facing="back"
-                    barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-                    onBarcodeScanned={handleScannedCode}
-                  />
-                </View>
-              ) : (
-                <View style={styles.permissionBlock}>
-                  <Ionicons
-                    name="camera-outline"
-                    size={sizes.iconHuge}
-                    color={colors.text.secondary}
-                  />
-                  <Text style={[typography.bodyMedium, styles.centredText]}>
-                    {cameraPermission.canAskAgain
-                      ? VERIFICATION_MESSAGES.cameraNeeded
-                      : VERIFICATION_MESSAGES.cameraDenied}
-                  </Text>
-                  {cameraPermission.canAskAgain && (
-                    <AppButton
-                      label="Allow camera"
-                      iconName="camera"
-                      onPress={requestCameraPermission}
-                    />
-                  )}
-                </View>
-              )}
-              <Text style={[typography.bodySmall, styles.cameraHint]}>
-                {cameraPermission.granted
-                  ? VERIFICATION_MESSAGES.aimAtCode
-                  : VERIFICATION_MESSAGES.typeHint}
-              </Text>
-            </View>
+    <ScreenContainer
+      hasPadding={false}
+      header={screenHeader}
+      footer={
+        <View style={styles.footerBar}>
+          <AppButton
+            label="Enter Code"
+            variant="outline"
+            size="large"
+            isFullWidth
+            iconName="keypad-outline"
+            onPress={() => setIsCodeEntryOpen(true)}
+          />
+        </View>
+      }
+    >
+      <View style={styles.scannerWrapper}>
+        <View style={styles.cameraFrame}>
+          {cameraPermission.granted ? (
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={handleScannedCode}
+            />
           ) : (
-            <View style={styles.typedBlock}>
-              <AppTextInput
-                label="Ticket code"
-                value={typedTicketKey}
-                onChangeText={setTypedTicketKey}
-                helperText={VERIFICATION_MESSAGES.typeHint}
-                iconName="keypad-outline"
-              />
-              <AppButton
-                label="Check this ticket"
-                size="large"
-                isFullWidth
-                isLoading={isChecking}
-                isDisabled={typedTicketKey.trim().length === 0}
-                onPress={() => runCheck({ ticketKey: typedTicketKey.trim() })}
-              />
+            <View style={styles.permissionBlock}>
+              <Ionicons name="camera-outline" size={sizes.iconHuge} color={colors.text.onColor} />
+              <Text style={[typography.bodyMedium, styles.onDarkText]}>
+                {cameraPermission.canAskAgain
+                  ? VERIFICATION_MESSAGES.cameraNeeded
+                  : VERIFICATION_MESSAGES.cameraDenied}
+              </Text>
+              {cameraPermission.canAskAgain && (
+                <AppButton label="Allow camera" iconName="camera" onPress={requestCameraPermission} />
+              )}
             </View>
           )}
-        </AppCard>
-      )}
 
-      {checkErrorMessage.length > 0 && (
-        <View style={styles.errorRow}>
-          <Ionicons name="alert-circle" size={sizes.iconMedium} color={colors.error.dark} />
-          <Text style={[typography.bodySmall, styles.errorText]}>{checkErrorMessage}</Text>
-        </View>
-      )}
-
-      <Text style={[typography.sectionHeading, styles.mutedText]}>Recent checks</Text>
-      {recentChecks.length === 0 ? (
-        <Text style={[typography.bodySmall, styles.mutedText]}>
-          {VERIFICATION_MESSAGES.noChecksYet}
-        </Text>
-      ) : (
-        recentChecks.map((recentCheck) => (
-          <AppCard key={recentCheck.id}>
-            <View style={styles.recentRow}>
-              <View style={styles.recentText}>
-                <Text style={typography.bodyLarge}>{recentCheck.ticketKey}</Text>
-                <Text style={[typography.caption, styles.mutedText]}>
-                  {recentCheck.method === VERIFICATION_METHODS.QR ? 'Scanned' : 'Typed'} ·{' '}
-                  {new Date(recentCheck.verifiedAt).toLocaleTimeString()}
-                </Text>
-              </View>
-              <StatusBadge
-                status={
-                  recentCheck.verificationResult === VERIFICATION_RESULTS.VALID ? 'valid' : 'invalid'
-                }
-              />
+          {/* Corner marks and a centre line, so the driver knows where to hold the code. */}
+          {cameraPermission.granted && (
+            <View style={styles.reticle} pointerEvents="none">
+              <View style={[styles.reticleCorner, styles.reticleTopLeft]} />
+              <View style={[styles.reticleCorner, styles.reticleTopRight]} />
+              <View style={styles.reticleLine} />
+              <View style={[styles.reticleCorner, styles.reticleBottomLeft]} />
+              <View style={[styles.reticleCorner, styles.reticleBottomRight]} />
             </View>
-          </AppCard>
-        ))
-      )}
+          )}
+
+          <View style={styles.hintPill} pointerEvents="none">
+            <Text style={[typography.bodyMedium, styles.onDarkText]}>
+              {checkErrorMessage || VERIFICATION_MESSAGES.aimAtCode}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {codeEntryDialog}
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: sizes.screenGutter,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+  },
+  headerTextBlock: {
+    flex: 1,
+    gap: spacing.xxs,
+  },
   mutedText: {
     color: colors.text.secondary,
   },
   centredText: {
     textAlign: 'center',
   },
-  toggleRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  toggleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    minHeight: MIN_TOUCH_TARGET,
-    borderRadius: radii.md,
-    borderWidth: sizes.borderThin,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  toggleButtonActive: {
-    borderColor: colors.primary[500],
-    backgroundColor: colors.primary[100],
-  },
-  toggleTextActive: {
-    color: colors.primary[600],
-  },
-  cameraFrame: {
-    aspectRatio: 1,
-    borderRadius: radii.lg,
-    overflow: 'hidden',
-    backgroundColor: colors.text.primary,
-  },
-  camera: {
-    flex: 1,
-  },
-  cameraHint: {
-    marginTop: spacing.md,
+  onDarkText: {
+    color: colors.text.onColor,
     textAlign: 'center',
-    color: colors.text.secondary,
   },
-  permissionBlock: {
+  noTripBlock: {
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: spacing.xxl,
   },
-  typedBlock: {
+  scannerWrapper: {
+    flex: 1,
+    padding: sizes.screenGutter,
+  },
+  cameraFrame: {
+    flex: 1,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    backgroundColor: colors.text.primary,
+    justifyContent: 'flex-end',
+  },
+  camera: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  permissionBlock: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: spacing.lg,
+    padding: spacing.xl,
   },
-  errorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
+  reticle: {
+    ...StyleSheet.absoluteFillObject,
+    margin: '18%',
+    justifyContent: 'center',
+  },
+  reticleCorner: {
+    position: 'absolute',
+    width: sizes.iconXLarge,
+    height: sizes.iconXLarge,
+    borderColor: colors.secondary[500],
+  },
+  reticleTopLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: sizes.borderThick,
+    borderLeftWidth: sizes.borderThick,
+    borderTopLeftRadius: radii.sm,
+  },
+  reticleTopRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: sizes.borderThick,
+    borderRightWidth: sizes.borderThick,
+    borderTopRightRadius: radii.sm,
+  },
+  reticleBottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: sizes.borderThick,
+    borderLeftWidth: sizes.borderThick,
+    borderBottomLeftRadius: radii.sm,
+  },
+  reticleBottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: sizes.borderThick,
+    borderRightWidth: sizes.borderThick,
+    borderBottomRightRadius: radii.sm,
+  },
+  reticleLine: {
+    height: sizes.borderThick,
+    backgroundColor: colors.secondary[500],
+  },
+  hintPill: {
+    alignSelf: 'center',
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderRadius: radii.md,
-    backgroundColor: colors.error.light,
+    backgroundColor: colors.overlay,
   },
-  errorText: {
+  footerBar: {
+    gap: spacing.md,
+    padding: sizes.screenGutter,
+    borderTopWidth: sizes.borderThin,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalBackdrop: {
     flex: 1,
-    color: colors.error.dark,
+    justifyContent: 'flex-end',
+    backgroundColor: colors.overlay,
   },
-  resultHeaderRow: {
+  modalSheet: {
+    gap: spacing.lg,
+    padding: sizes.screenGutter,
+    paddingBottom: MIN_TOUCH_TARGET,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
+  modalHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-  },
-  resultHeaderText: {
-    flex: 1,
-    gap: spacing.xxs,
-  },
-  resultDetailBlock: {
-    gap: spacing.xxs,
-    marginVertical: spacing.lg,
-    padding: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.background,
-  },
-  recentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  recentText: {
-    flex: 1,
-    gap: spacing.xxs,
+    justifyContent: 'space-between',
   },
 });

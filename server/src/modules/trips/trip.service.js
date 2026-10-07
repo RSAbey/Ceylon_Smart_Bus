@@ -4,6 +4,7 @@ const Trip = require('./trip.model');
 const Bus = require('../buses/bus.model');
 const DriverProfile = require('../drivers/driverProfile.model');
 const RouteStop = require('../routes/routeStop.model');
+const ticketService = require('../tickets/ticket.service');
 const { TRIP_STATUSES } = require('./trip.constants');
 const { BUS_STATUSES } = require('../buses/bus.constants');
 const AppError = require('../../utils/AppError');
@@ -104,6 +105,11 @@ async function getDriverTripOverview(userId) {
     ? await RouteStop.find({ routeId: assignedBus.routeId.id }).sort({ stopSequence: 1 })
     : [];
 
+  // How many passengers are aboard on a ticket, shown on the driver's Live screen.
+  const passengerCount = runningTrip
+    ? (await ticketService.getActiveTicketHolderIds(runningTrip.id)).length
+    : 0;
+
   return {
     driverId: driverProfile.id,
     bus: assignedBus,
@@ -111,6 +117,8 @@ async function getDriverTripOverview(userId) {
     stops,
     trip: runningTrip,
     isTripRunning: Boolean(runningTrip),
+    isAcceptingBookings: runningTrip ? runningTrip.isAcceptingBookings : null,
+    passengerCount,
   };
 }
 

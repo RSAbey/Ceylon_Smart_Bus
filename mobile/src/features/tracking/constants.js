@@ -28,3 +28,35 @@ export const COLOMBO_CENTRE = Object.freeze({ latitude: 6.9271, longitude: 79.86
 
 /** Driver location reporting while a trip runs. */
 export const DRIVER_LOCATION_INTERVAL_MS = 5000;
+
+/** Wording on the driver's My Routes tab. */
+export const DRIVER_ROUTE_MESSAGES = Object.freeze({
+  title: 'My Routes',
+  subtitle: 'The route your assigned bus serves',
+  stopsHeading: 'Stops in travel order',
+  noRouteTitle: 'No route assigned',
+  noRouteMessage: 'An administrator assigns a route to your bus. Ask them to set one before your shift.',
+});
+
+/** Wording on the driver's Live Tracking tab. */
+export const DRIVER_LIVE_MESSAGES = Object.freeze({
+  title: 'Live Tracking',
+  onDuty: 'On Duty',
+  offDuty: 'Off Duty',
+  gpsStrong: 'GPS Strong',
+  gpsWeak: 'GPS Weak',
+  gpsNone: 'No GPS',
+  nextStop: 'Next Stop',
+  speed: 'Speed',
+  status: 'Status',
+  reportDelay: 'Report Delay',
+  endTrip: 'End Trip',
+  startTrip: 'Start Trip',
+  notStartedTitle: 'You are not on a trip',
+  notStartedMessage: 'Start your run so passengers can track this bus and buy tickets for it.',
+  endConfirmTitle: 'End this trip?',
+  endConfirmMessage: 'Passengers will stop seeing this bus on the live map.',
+});
+
+/** A position older than this is treated as a weak GPS fix on the driver's own screen. */
+export const WEAK_GPS_AFTER_SECONDS = 20;
