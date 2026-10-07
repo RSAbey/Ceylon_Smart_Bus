@@ -561,15 +561,23 @@ a {
 .modal {
   width: 100%;
   max-width: var(--modal-width);
+  /* Capped so a long form scrolls its own body instead of pushing the footer off-screen. */
+  max-height: min(86vh, 880px);
   background: var(--color-surface);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-raised);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.modal--wide {
+  max-width: var(--modal-width-wide);
 }
 
 .modal__header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   padding: var(--space-lg) var(--space-xxl);
@@ -577,19 +585,27 @@ a {
 }
 
 .modal__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--space-xxl);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
 }
 
+
 .modal__footer {
   display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-sm);
   padding: var(--space-lg) var(--space-xxl);
   border-top: var(--border-thin) solid var(--color-border);
+  background: var(--color-surface);
 }
+
 
 /* ---------- Toast ---------- */
 .toast {

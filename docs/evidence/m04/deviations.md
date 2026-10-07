@@ -28,3 +28,17 @@
   job the free hosting tier does not run. Delay and announcement alerts are fully implemented.
 - **Announcement `expiresAt` is stored but not swept.** Nothing hides an expired announcement on a
   schedule; the field is kept so the ERD stays accurate and an admin can still archive by hand.
+
+## Modal sizing (admin shared component)
+
+The dialog had no maximum height, so a long form grew past the viewport and pushed its own footer
+off-screen: the route form's Save button could not be reached at all. Fixed in the shared `Modal`:
+
+- the dialog is capped at `min(86vh, 880px)` and the **body scrolls**, with the header and footer
+  pinned, so the action buttons are always reachable however long the form is;
+- a `size="wide"` variant widens the dialog to 880px, which lets the existing `.form-grid` pairs
+  fall into two columns instead of one tall stack;
+- the route, bus, driver and announcement forms all use the wide variant.
+
+Verified in a browser at 1440x900 and 1024x700: the body scrolls, the footer stays put, and the
+stop Details panel expands without breaking the layout.

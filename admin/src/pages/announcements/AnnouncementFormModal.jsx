@@ -100,6 +100,7 @@ export default function AnnouncementFormModal({
       isOpen={isOpen}
       title={announcementBeingEdited ? 'Edit draft' : 'Write announcement'}
       onClose={onClose}
+      size="wide"
       footer={
         <>
           <Button label="Cancel" variant="outline" onClick={onClose} />

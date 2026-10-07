@@ -169,6 +169,7 @@ export default function RouteFormModal({
       isOpen={isOpen}
       title={routeDetails ? ROUTE_MESSAGES.editTitle : ROUTE_MESSAGES.addTitle}
       onClose={onClose}
+      size="wide"
       footer={
         <>
           {routeDetails && !isSuspended && (
@@ -198,6 +199,14 @@ export default function RouteFormModal({
           errorText={fieldErrors.routeNumber}
           helperText="For example 412."
         />
+        <FormField
+          fieldId="routeName"
+          label="Route name"
+          fieldText={routeForm.routeName}
+          onFieldTextChange={(fieldText) => changeField('routeName', fieldText)}
+          errorText={fieldErrors.routeName}
+          helperText="How staff refer to it, for example Kaduwela Express."
+        />
         <div className="form-field">
           <label className="text-label" htmlFor="routeStatus">
             Status
@@ -217,15 +226,6 @@ export default function RouteFormModal({
           </p>
         </div>
       </div>
-
-      <FormField
-        fieldId="routeName"
-        label="Route name"
-        fieldText={routeForm.routeName}
-        onFieldTextChange={(fieldText) => changeField('routeName', fieldText)}
-        errorText={fieldErrors.routeName}
-        helperText="How staff refer to it, for example Kaduwela Express."
-      />
 
       <div className="form-grid">
         <FormField

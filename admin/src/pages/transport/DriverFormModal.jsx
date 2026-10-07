@@ -123,6 +123,7 @@ export default function DriverFormModal({
       isOpen={isOpen}
       title={driverBeingEdited ? 'Edit driver details' : 'Register driver'}
       onClose={onClose}
+      size="wide"
       footer={
         <>
           {driverBeingEdited && !isSuspended && (

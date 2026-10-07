@@ -117,6 +117,7 @@ export default function BusFormModal({
       isOpen={isOpen}
       title={busBeingEdited ? 'Edit bus details' : 'Register bus'}
       onClose={onClose}
+      size="wide"
       footer={
         <>
           {busBeingEdited && !isRetired && (
@@ -140,22 +141,24 @@ export default function BusFormModal({
         </p>
       )}
 
-      <FormField
-        fieldId="busPlateNumber"
-        label="Plate number"
-        fieldText={busForm.plateNumber}
-        onFieldTextChange={(fieldText) => changeField('plateNumber', fieldText)}
-        errorText={fieldErrors.plateNumber}
-        helperText="For example NB-1234."
-      />
-      <FormField
-        fieldId="busName"
-        label="Bus name"
-        fieldText={busForm.busName}
-        onFieldTextChange={(fieldText) => changeField('busName', fieldText)}
-        errorText={fieldErrors.busName}
-        helperText="The name staff and passengers know it by."
-      />
+      <div className="form-grid">
+        <FormField
+          fieldId="busPlateNumber"
+          label="Plate number"
+          fieldText={busForm.plateNumber}
+          onFieldTextChange={(fieldText) => changeField('plateNumber', fieldText)}
+          errorText={fieldErrors.plateNumber}
+          helperText="For example NB-1234."
+        />
+        <FormField
+          fieldId="busName"
+          label="Bus name"
+          fieldText={busForm.busName}
+          onFieldTextChange={(fieldText) => changeField('busName', fieldText)}
+          errorText={fieldErrors.busName}
+          helperText="The name staff and passengers know it by."
+        />
+      </div>
 
       <div className="form-field">
         <label className="text-label" htmlFor="busModel">
