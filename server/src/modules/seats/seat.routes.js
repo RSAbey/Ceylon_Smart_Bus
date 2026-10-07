@@ -1,11 +1,19 @@
-// Stub router mounted at /api/seats (passenger / driver) — Member 03 adds the endpoints here.
+// Seat endpoints mounted at /api/seats (Member 03). Signed-in passengers choosing a seat.
 const express = require('express');
+const { param } = require('express-validator');
+const seatController = require('./seat.controller');
+const authenticateToken = require('../../middleware/authenticateToken');
+const validateRequest = require('../../middleware/validateRequest');
 
 const seatRouter = express.Router();
 
-/**
- * Planned endpoints (document each one in docs/api when it is built):
- * - Scope: seat map for a trip and seat choice (one booking per seat per trip).
- */
+seatRouter.use(authenticateToken);
+
+seatRouter.get(
+  '/trip/:tripId',
+  [param('tripId').isMongoId().withMessage('Choose a bus before picking a seat.')],
+  validateRequest,
+  seatController.getSeatMap
+);
 
 module.exports = seatRouter;

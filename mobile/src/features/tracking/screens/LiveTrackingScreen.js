@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
 import AppHeader from '../../../components/navigation/AppHeader';
 import AppCard from '../../../components/ui/AppCard';
+import AppButton from '../../../components/ui/AppButton';
 import StatusBadge from '../../../components/ui/StatusBadge';
 import LoadingState from '../../../components/feedback/LoadingState';
 import ErrorState from '../../../components/feedback/ErrorState';
@@ -170,6 +171,17 @@ export default function LiveTrackingScreen() {
               </Text>
             </View>
           </View>
+
+          {/* The passenger is watching this exact bus, so booking a ticket on it is one tap (Member 03). */}
+          <AppButton
+            label="Buy a ticket for this bus"
+            variant="secondary"
+            size="large"
+            isFullWidth
+            iconName="ticket-outline"
+            style={styles.bookButton}
+            onPress={() => router.push(`/(passenger)/ticket/new?tripId=${tripId}`)}
+          />
         </AppCard>
       </View>
     </ScreenContainer>
@@ -232,6 +244,9 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     borderTopWidth: sizes.borderThin,
     borderTopColor: colors.border,
+  },
+  bookButton: {
+    marginTop: spacing.md,
   },
   freshnessRow: {
     flexDirection: 'row',

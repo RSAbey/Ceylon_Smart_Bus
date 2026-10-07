@@ -1,11 +1,38 @@
-// Stub router mounted at /api/tickets (passenger / driver) — Member 03 adds the endpoints here.
+// Ticket endpoints mounted at /api/tickets (Member 03). Signed-in passengers manage their own tickets.
 const express = require('express');
+const ticketController = require('./ticket.controller');
+const authenticateToken = require('../../middleware/authenticateToken');
+const validateRequest = require('../../middleware/validateRequest');
+const {
+  createTicketValidationRules,
+  updateTicketValidationRules,
+  ticketIdValidationRules,
+  listTicketsValidationRules,
+} = require('./ticket.validation');
 
 const ticketRouter = express.Router();
 
-/**
- * Planned endpoints (document each one in docs/api when it is built):
- * - Scope: passenger creates, views, updates and cancels tickets (FR-05, FR-06); cancelling releases the seat.
- */
+ticketRouter.use(authenticateToken);
+
+ticketRouter.get('/', listTicketsValidationRules, validateRequest, ticketController.listMyTickets);
+ticketRouter.post('/', createTicketValidationRules, validateRequest, ticketController.createTicket);
+ticketRouter.get(
+  '/:ticketId',
+  ticketIdValidationRules,
+  validateRequest,
+  ticketController.getTicketDetails
+);
+ticketRouter.put(
+  '/:ticketId',
+  updateTicketValidationRules,
+  validateRequest,
+  ticketController.updateTicket
+);
+ticketRouter.delete(
+  '/:ticketId',
+  ticketIdValidationRules,
+  validateRequest,
+  ticketController.cancelTicket
+);
 
 module.exports = ticketRouter;

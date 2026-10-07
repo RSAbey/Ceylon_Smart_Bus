@@ -218,6 +218,16 @@ export default function RouteDetailsScreen() {
         isDisabled={!runningTripId}
         onPress={() => router.push(`/(passenger)/live-tracking/${runningTripId}`)}
       />
+      {/* Booking needs a bus in service, because a ticket is issued against one trip (Member 03). */}
+      <AppButton
+        label="Buy a ticket"
+        variant="secondary"
+        size="large"
+        isFullWidth
+        iconName="ticket-outline"
+        isDisabled={!runningTripId}
+        onPress={() => router.push(`/(passenger)/ticket/new?tripId=${runningTripId}`)}
+      />
     </ScreenContainer>
   );
 }

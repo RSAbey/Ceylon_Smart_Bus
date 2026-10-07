@@ -1,11 +1,38 @@
-// Stub router mounted at /api/inquiries (passenger / driver) — Member 03 adds the endpoints here.
+// Inquiry endpoints mounted at /api/inquiries (Member 03). Signed-in passengers and drivers.
 const express = require('express');
+const inquiryController = require('./inquiry.controller');
+const authenticateToken = require('../../middleware/authenticateToken');
+const validateRequest = require('../../middleware/validateRequest');
+const {
+  createInquiryValidationRules,
+  updateInquiryValidationRules,
+  inquiryIdValidationRules,
+  inboxFilterValidationRules,
+} = require('./inquiry.validation');
 
 const inquiryRouter = express.Router();
 
-/**
- * Planned endpoints (document each one in docs/api when it is built):
- * - Scope: passenger/driver create, view, update and delete inquiries; edit/delete only within 5 minutes (server-side).
- */
+inquiryRouter.use(authenticateToken);
+
+inquiryRouter.get('/', inboxFilterValidationRules, validateRequest, inquiryController.listMyInquiries);
+inquiryRouter.post('/', createInquiryValidationRules, validateRequest, inquiryController.createInquiry);
+inquiryRouter.get(
+  '/:inquiryId',
+  inquiryIdValidationRules,
+  validateRequest,
+  inquiryController.getInquiryDetails
+);
+inquiryRouter.put(
+  '/:inquiryId',
+  updateInquiryValidationRules,
+  validateRequest,
+  inquiryController.updateInquiry
+);
+inquiryRouter.delete(
+  '/:inquiryId',
+  inquiryIdValidationRules,
+  validateRequest,
+  inquiryController.deleteInquiry
+);
 
 module.exports = inquiryRouter;
