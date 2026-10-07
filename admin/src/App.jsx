@@ -6,8 +6,7 @@ import LoginPage from './pages/auth/LoginPage';
 import OverviewPage from './pages/overview/OverviewPage';
 import LiveFleetPage from './pages/fleet/LiveFleetPage';
 import RoutesPage from './pages/routes/RoutesPage';
-import BusesPage from './pages/buses/BusesPage';
-import DriversPage from './pages/drivers/DriversPage';
+import TransportDataPage from './pages/transport/TransportDataPage';
 import DelaysPage from './pages/delays/DelaysPage';
 import FinancePage from './pages/finance/FinancePage';
 import InquiriesPage from './pages/inquiries/InquiriesPage';
@@ -27,8 +26,10 @@ const adminRouter = createBrowserRouter([
       { index: true, element: <OverviewPage /> },
       { path: 'fleet', element: <LiveFleetPage /> },
       { path: 'routes', element: <RoutesPage /> },
-      { path: 'buses', element: <BusesPage /> },
-      { path: 'drivers', element: <DriversPage /> },
+      { path: 'transport', element: <TransportDataPage /> },
+      // Old paths kept so a bookmarked Buses or Drivers link still lands somewhere useful.
+      { path: 'buses', element: <Navigate to="/transport" replace /> },
+      { path: 'drivers', element: <Navigate to="/transport" replace /> },
       { path: 'delays', element: <DelaysPage /> },
       { path: 'finance', element: <FinancePage /> },
       { path: 'inquiries', element: <InquiriesPage /> },

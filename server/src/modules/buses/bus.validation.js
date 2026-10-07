@@ -1,6 +1,6 @@
 // express-validator rules for admin bus management (Member 02).
 const { body } = require('express-validator');
-const { BUS_STATUSES } = require('./bus.constants');
+const { BUS_STATUSES, BUS_MODELS } = require('./bus.constants');
 
 const MIN_BUS_CAPACITY = 1;
 const MAX_BUS_CAPACITY = 100;
@@ -21,6 +21,9 @@ const registerBusValidationRules = [
     .optional()
     .isIn(Object.values(BUS_STATUSES))
     .withMessage(`Status must be one of: ${Object.values(BUS_STATUSES).join(', ')}.`),
+  body('model').optional().isIn(BUS_MODELS).withMessage('Choose a bus model from the list.'),
+  body('gpsDeviceId').optional({ values: 'falsy' }).trim().notEmpty().withMessage('Enter the tracker id.'),
+  body('lastServicedAt').optional({ values: 'falsy' }).isISO8601().withMessage('Enter a valid service date.'),
   body('driverId').optional({ nullable: true }).isMongoId().withMessage('Choose a registered driver.'),
   body('routeId').optional({ nullable: true }).isMongoId().withMessage('Choose an existing route.'),
 ];
@@ -40,6 +43,9 @@ const updateBusValidationRules = [
     .optional()
     .isIn(Object.values(BUS_STATUSES))
     .withMessage(`Status must be one of: ${Object.values(BUS_STATUSES).join(', ')}.`),
+  body('model').optional().isIn(BUS_MODELS).withMessage('Choose a bus model from the list.'),
+  body('gpsDeviceId').optional({ values: 'falsy' }).trim().notEmpty().withMessage('Enter the tracker id.'),
+  body('lastServicedAt').optional({ values: 'falsy' }).isISO8601().withMessage('Enter a valid service date.'),
   body('driverId').optional({ nullable: true }).isMongoId().withMessage('Choose a registered driver.'),
   body('routeId').optional({ nullable: true }).isMongoId().withMessage('Choose an existing route.'),
 ];

@@ -66,6 +66,28 @@ tickets together for the conductor and the finance report.
 reservations. It is enforced server-side, not just drawn: a closed trip refuses new tickets and
 drops out of the passenger "Buy my ticket" picker, while seats already booked are untouched.
 
+## 6. Admin dashboard fields (Transport Data)
+
+Agreed with the team on 2026-10-08 as "Group A": columns the admin mockups need, no new tables.
+
+| Table | Column | Type | Notes |
+|---|---|---|---|
+| `BUS` | `busCode` | string | **UK**, "BUS-014". Generated on registration; staff say it out loud, unlike a Mongo id |
+| `BUS` | `model` | string | Chosen from a fixed `BUS_MODELS` list |
+| `BUS` | `gpsDeviceId` | string | Traces a faulty tracker to a vehicle |
+| `BUS` | `lastServicedAt` | date | Shown on the fleet table |
+| `BUS` | `status` | enum | **`retired` added** to `active \| maintenance` |
+| `DRIVER_PROFILE` | `licenseClass` | enum | `heavy_vehicle \| light_vehicle \| dual_purpose` |
+| `DRIVER_PROFILE` | `dutyStatus` | enum | `active \| on_leave \| suspended` |
+
+**Why `dutyStatus` is separate from `USER.status`.** They answer different questions. `USER.status`
+is whether the account works; `dutyStatus` is whether the person is available to drive. A driver on
+leave can still sign in and read notices. Suspending one sets **both**, so the suspension is not
+only on paper.
+
+Existing rows in Atlas were backfilled: three buses given `BUS-001`–`BUS-003`, and both drivers
+given `dutyStatus: active` with `licenseClass: heavy_vehicle`.
+
 ## What did NOT change
 
 No card data is stored. The demo card number, holder name, expiry and CVV are validated for shape and then

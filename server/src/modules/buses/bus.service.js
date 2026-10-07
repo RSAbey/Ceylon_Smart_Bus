@@ -4,6 +4,7 @@ const Trip = require('../trips/trip.model');
 const DriverProfile = require('../drivers/driverProfile.model');
 const Route = require('../routes/route.model');
 const { TRIP_STATUSES } = require('../trips/trip.constants');
+const { BUS_STATUSES, BUS_CODE_PREFIX, BUS_CODE_DIGITS } = require('./bus.constants');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
@@ -63,6 +64,19 @@ async function assertRouteExists(routeId) {
 }
 
 /**
+ * Builds the next fleet code, "BUS-014". Numbering continues from the highest code in use, so a
+ * deleted bus never has its code handed to a different vehicle.
+ * @returns {Promise<string>} An unused bus code.
+ */
+async function buildNextBusCode() {
+  const highestCodedBus = await Bus.findOne({ busCode: { $exists: true } })
+    .sort({ busCode: -1 })
+    .select('busCode');
+  const highestNumber = highestCodedBus ? Number(highestCodedBus.busCode.split('-')[1]) || 0 : 0;
+  return `${BUS_CODE_PREFIX}-${String(highestNumber + 1).padStart(BUS_CODE_DIGITS, '0')}`;
+}
+
+/**
  * Registers a bus (admin only).
  * @param {object} busDetails - Plate, name, capacity, status and optional driver/route assignment.
  * @returns {Promise<object>} The created bus, populated.
@@ -79,10 +93,14 @@ async function registerBus(busDetails) {
   await assertRouteExists(busDetails.routeId);
 
   const createdBus = await Bus.create({
+    busCode: await buildNextBusCode(),
     plateNumber,
     busName: busDetails.busName.trim(),
+    model: busDetails.model,
     capacity: busDetails.capacity,
     status: busDetails.status,
+    gpsDeviceId: busDetails.gpsDeviceId ? busDetails.gpsDeviceId.trim() : undefined,
+    lastServicedAt: busDetails.lastServicedAt,
     driverId: busDetails.driverId || undefined,
     routeId: busDetails.routeId || undefined,
   });
@@ -92,20 +110,27 @@ async function registerBus(busDetails) {
 /**
  * Lists buses for the admin dashboard.
  * @param {object} [listOptions] - Query options.
- * @param {string} [listOptions.searchText] - Matches plate number or bus name.
+ * @param {string} [listOptions.searchText] - Matches bus code, plate number, name or model.
+ * @param {string} [listOptions.status] - Narrows to one BUS_STATUSES value.
  * @returns {Promise<{buses: object[], totalCount: number}>} Buses with driver and route filled in.
  */
-async function listBuses({ searchText } = {}) {
+async function listBuses({ searchText, status } = {}) {
   const listFilter = {};
+  if (status) listFilter.status = status;
   if (searchText) {
     const searchPattern = new RegExp(searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    listFilter.$or = [{ plateNumber: searchPattern }, { busName: searchPattern }];
+    listFilter.$or = [
+      { busCode: searchPattern },
+      { plateNumber: searchPattern },
+      { busName: searchPattern },
+      { model: searchPattern },
+    ];
   }
   const [buses, totalCount] = await Promise.all([
     Bus.find(listFilter)
       .populate({ path: 'driverId', populate: { path: 'userId' } })
       .populate('routeId')
-      .sort({ plateNumber: 1 }),
+      .sort({ busCode: 1 }),
     Bus.countDocuments(listFilter),
   ]);
   return { buses, totalCount };
@@ -135,8 +160,21 @@ async function updateBus(busId, busChanges) {
     }
   }
   if (busChanges.busName !== undefined) editableBus.busName = busChanges.busName.trim();
+  if (busChanges.model !== undefined) editableBus.model = busChanges.model;
   if (busChanges.capacity !== undefined) editableBus.capacity = busChanges.capacity;
-  if (busChanges.status !== undefined) editableBus.status = busChanges.status;
+  if (busChanges.gpsDeviceId !== undefined) {
+    editableBus.gpsDeviceId = busChanges.gpsDeviceId ? busChanges.gpsDeviceId.trim() : undefined;
+  }
+  if (busChanges.lastServicedAt !== undefined) editableBus.lastServicedAt = busChanges.lastServicedAt;
+  if (busChanges.status !== undefined) {
+    await assertStatusChangeIsSafe(editableBus, busChanges.status);
+    editableBus.status = busChanges.status;
+    // A retired bus keeps no route or driver, or passengers would still be offered it.
+    if (busChanges.status === BUS_STATUSES.RETIRED) {
+      editableBus.routeId = undefined;
+      editableBus.driverId = undefined;
+    }
+  }
 
   if (busChanges.driverId !== undefined) {
     await assertDriverIsAssignable(busChanges.driverId, busId);
@@ -148,6 +186,28 @@ async function updateBus(busId, busChanges) {
   }
   await editableBus.save();
   return getBusById(busId);
+}
+
+/**
+ * Refuses to take a bus out of service while it is mid-route, because passengers are tracking it
+ * and may hold tickets for that trip.
+ * @param {object} bus - The bus being changed.
+ * @param {string} nextStatus - The status the admin chose.
+ * @returns {Promise<void>} Resolves when the change is safe.
+ */
+async function assertStatusChangeIsSafe(bus, nextStatus) {
+  if (nextStatus === BUS_STATUSES.ACTIVE) return;
+  const runningTripCount = await Trip.countDocuments({
+    busId: bus.id,
+    status: TRIP_STATUSES.ONGOING,
+  });
+  if (runningTripCount > 0) {
+    throw new AppError(
+      `${bus.busCode} is on a trip right now. End the trip before marking it ${nextStatus}.`,
+      HTTP_STATUS.CONFLICT,
+      [{ field: 'status', message: 'This bus is carrying passengers.' }]
+    );
+  }
 }
 
 /**
@@ -166,4 +226,4 @@ async function deleteBus(busId) {
   await Bus.findByIdAndDelete(busId);
 }
 
-module.exports = { getBusById, registerBus, listBuses, updateBus, deleteBus };
+module.exports = { getBusById, registerBus, listBuses, updateBus, deleteBus, buildNextBusCode };

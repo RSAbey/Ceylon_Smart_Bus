@@ -11,7 +11,7 @@ const HTTP_STATUS = require('../../utils/httpStatus');
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function registerDriver(request, response) {
-  const { fullName, email, mobile, password, licenseNumber, nic } = request.body;
+  const { fullName, email, mobile, password, licenseNumber, nic, licenseClass } = request.body;
   const createdDriver = await driverService.registerDriver({
     fullName,
     email,
@@ -19,6 +19,7 @@ async function registerDriver(request, response) {
     password,
     licenseNumber,
     nic,
+    licenseClass,
   });
   sendResponse(response, 'Driver registered.', createdDriver, HTTP_STATUS.CREATED);
 }
@@ -30,9 +31,10 @@ async function registerDriver(request, response) {
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function listDrivers(request, response) {
-  const { search, page, pageSize } = request.query;
+  const { search, dutyStatus, page, pageSize } = request.query;
   const driverPage = await driverService.listDrivers({
     searchText: search,
+    dutyStatus,
     page: page ? Number(page) : undefined,
     pageSize: pageSize ? Number(pageSize) : undefined,
   });
@@ -57,12 +59,17 @@ async function getDriver(request, response) {
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function updateDriver(request, response) {
-  const { fullName, licenseNumber, nic, status } = request.body;
+  const { fullName, licenseNumber, nic, status, licenseClass, dutyStatus, mobile, email } =
+    request.body;
   const updatedDriver = await driverService.updateDriver(request.params.driverId, {
     fullName,
     licenseNumber,
     nic,
     status,
+    licenseClass,
+    dutyStatus,
+    mobile,
+    email,
   });
   sendResponse(response, 'Driver updated.', updatedDriver);
 }
@@ -78,8 +85,39 @@ async function deleteDriver(request, response) {
   sendResponse(response, 'Driver deleted.');
 }
 
+/**
+ * GET /api/admin/drivers/assignable-buses - buses an admin can give to a driver.
+ * @param {import('express').Request} _request - Unused.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function listAssignableBuses(_request, response) {
+  const buses = await driverService.listAssignableBuses();
+  sendResponse(response, 'Assignable buses loaded.', { buses });
+}
+
+/**
+ * PATCH /api/admin/drivers/:driverId/bus - assign a bus, or clear it with a null busId.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function assignBus(request, response) {
+  const driverProfile = await driverService.assignBusToDriver(
+    request.params.driverId,
+    request.body.busId || null
+  );
+  sendResponse(
+    response,
+    request.body.busId ? 'Bus assigned to the driver.' : 'Bus assignment cleared.',
+    driverProfile
+  );
+}
+
 module.exports = {
   registerDriver: asyncHandler(registerDriver),
+  listAssignableBuses: asyncHandler(listAssignableBuses),
+  assignBus: asyncHandler(assignBus),
   listDrivers: asyncHandler(listDrivers),
   getDriver: asyncHandler(getDriver),
   updateDriver: asyncHandler(updateDriver),

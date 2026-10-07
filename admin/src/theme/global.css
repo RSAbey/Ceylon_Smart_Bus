@@ -757,3 +757,81 @@ a {
 .bar-chart__label {
   white-space: nowrap;
 }
+
+/* ---------------------------------------------------------------------------
+   Transport Data: tab row, filter bar, the assign-bus radio list and the
+   notices that explain a consequence before an admin commits to it.
+   --------------------------------------------------------------------------- */
+
+.tab-row {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.filter-row__search {
+  flex: 1 1 240px;
+  max-width: 320px;
+}
+
+.assign-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.assign-option {
+  display: flex;
+  gap: var(--space-md);
+  align-items: flex-start;
+  padding: var(--space-lg);
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.assign-option:hover {
+  border-color: var(--primary-300);
+}
+
+.assign-option--chosen {
+  border-color: var(--primary-500);
+  background: var(--primary-100);
+}
+
+.assign-option span {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.form-notice {
+  margin: 0;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--information-light);
+  color: var(--information-dark);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.form-notice--warning {
+  background: var(--warning-light);
+  color: var(--warning-dark);
+}
+
+.form-notice--live {
+  background: var(--success-light);
+  color: var(--success-dark);
+}

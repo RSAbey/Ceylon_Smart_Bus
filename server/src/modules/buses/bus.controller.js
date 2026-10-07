@@ -22,7 +22,10 @@ async function registerBus(request, response) {
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function listBuses(request, response) {
-  const busPage = await busService.listBuses({ searchText: request.query.search });
+  const busPage = await busService.listBuses({
+    searchText: request.query.search,
+    status: request.query.status,
+  });
   sendResponse(response, 'Buses loaded.', busPage);
 }
 

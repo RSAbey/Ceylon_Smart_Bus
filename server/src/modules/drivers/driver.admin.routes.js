@@ -2,7 +2,11 @@
 // Drivers are created here, never by self-registration (PROJECT_PLAN.md deviation 4).
 const express = require('express');
 const driverController = require('./driver.controller');
-const { registerDriverValidationRules, updateDriverValidationRules } = require('./driver.validation');
+const {
+  registerDriverValidationRules,
+  updateDriverValidationRules,
+  assignBusValidationRules,
+} = require('./driver.validation');
 const authenticateToken = require('../../middleware/authenticateToken');
 const authorizeRoles = require('../../middleware/authorizeRoles');
 const validateRequest = require('../../middleware/validateRequest');
@@ -15,12 +19,20 @@ driverAdminRouter.use(authenticateToken, authorizeRoles(USER_ROLES.ADMIN));
 
 driverAdminRouter.post('/', registerDriverValidationRules, validateRequest, driverController.registerDriver);
 driverAdminRouter.get('/', driverController.listDrivers);
+// Must sit above /:driverId so "assignable-buses" is never read as a driver id.
+driverAdminRouter.get('/assignable-buses', driverController.listAssignableBuses);
 driverAdminRouter.get('/:driverId', driverController.getDriver);
 driverAdminRouter.patch(
   '/:driverId',
   updateDriverValidationRules,
   validateRequest,
   driverController.updateDriver
+);
+driverAdminRouter.patch(
+  '/:driverId/bus',
+  assignBusValidationRules,
+  validateRequest,
+  driverController.assignBus
 );
 driverAdminRouter.delete('/:driverId', driverController.deleteDriver);
 
