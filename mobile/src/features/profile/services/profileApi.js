@@ -27,3 +27,12 @@ export async function updateMyProfile(profileChanges) {
 export async function deleteMyAccount() {
   await apiClient.delete('/users/me');
 }
+
+/**
+ * The signed-in driver's own record: account, licence, assigned bus and completed trips.
+ * @returns {Promise<object>} Driver profile summary.
+ */
+export async function fetchDriverProfile() {
+  const profileEnvelope = await apiClient.get('/trips/driver-profile');
+  return profileEnvelope.data;
+}

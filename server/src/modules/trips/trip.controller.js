@@ -17,6 +17,17 @@ async function getMyTripOverview(request, response) {
 }
 
 /**
+ * GET /api/trips/driver-profile - the driver's own record for the Profile screen.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function getMyDriverProfile(request, response) {
+  const driverSummary = await tripService.getDriverProfileSummary(request.user.userId);
+  sendResponse(response, 'Driver profile loaded.', driverSummary);
+}
+
+/**
  * POST /api/trips/start — start a trip on the driver's assigned bus.
  * @param {import('express').Request} request - Express request.
  * @param {import('express').Response} response - Express response.
@@ -41,6 +52,7 @@ async function endTrip(request, response) {
 
 module.exports = {
   getMyTripOverview: asyncHandler(getMyTripOverview),
+  getMyDriverProfile: asyncHandler(getMyDriverProfile),
   startTrip: asyncHandler(startTrip),
   endTrip: asyncHandler(endTrip),
 };

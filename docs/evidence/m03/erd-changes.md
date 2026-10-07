@@ -56,6 +56,16 @@ explained or audited, so every movement is a line and the balance is the latest 
 **Why.** It matches the My Ticket mockup, it is easier to read out over a bad phone line, and it groups a day's
 tickets together for the conductor and the finance report.
 
+## 5. `TRIP.isAcceptingBookings`
+
+| Column | Type | Notes |
+|---|---|---|
+| `isAcceptingBookings` | boolean | Defaults to true |
+
+**Why.** The driver's Bookings screen has a switch that closes a filling bus to new seat
+reservations. It is enforced server-side, not just drawn: a closed trip refuses new tickets and
+drops out of the passenger "Buy my ticket" picker, while seats already booked are untouched.
+
 ## What did NOT change
 
 No card data is stored. The demo card number, holder name, expiry and CVV are validated for shape and then

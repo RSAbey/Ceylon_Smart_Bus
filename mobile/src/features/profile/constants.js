@@ -84,3 +84,9 @@ export const DELETE_ACCOUNT_DIALOG = Object.freeze({
     'This permanently removes your account, tickets and saved routes. This cannot be undone.',
   confirmLabel: 'Delete account',
 });
+
+/** Section headings on the driver's Profile screen. */
+export const DRIVER_PROFILE_SECTIONS = Object.freeze({
+  account: 'Account settings',
+  safety: 'Support & legal',
+});

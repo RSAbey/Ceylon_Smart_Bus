@@ -10,6 +10,7 @@ const tripRouter = express.Router();
 tripRouter.use(authenticateToken, authorizeRoles(USER_ROLES.DRIVER));
 
 tripRouter.get('/mine', tripController.getMyTripOverview);
+tripRouter.get('/driver-profile', tripController.getMyDriverProfile);
 tripRouter.post('/start', tripController.startTrip);
 tripRouter.post('/end', tripController.endTrip);
 

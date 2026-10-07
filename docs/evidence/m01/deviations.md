@@ -40,3 +40,18 @@ Ceylon Smart Bus screens (10–20) and with the agreed ERD. Every change is list
 The ERD has no "verified" flag on `USER` (`status` is only `active | blocked`). An account is therefore created
 and usable as soon as registration succeeds; the OTP gates the registration flow but does not block a later
 direct sign-in. Options: accept and document it, or add `isMobileVerified` to `USER` and enforce it at login.
+
+## Driver Profile (driver app mockup)
+
+| Figma row | Implemented | Reason |
+|---|---|---|
+| Rating "★ 4.9" | Omitted | Nothing rates a driver: there is no RATING table and no passenger flow that would produce a score. A fixed number on screen would be invented data. |
+| "142 trips completed" | **Kept, counted for real** | `TRIP` rows with status `completed` for this driver. |
+| Vehicle Details | Kept, from the assigned `BUS` | Shows bus name, plate and capacity, which the data model already holds. |
+| Documents | Kept, reduced | Shows the licence number and NIC that an administrator registered. Registration and insurance documents would need a new entity and file storage. |
+| Earnings & Payments | Replaced with **Shift totals** | There is no payout subsystem. Shift totals show what the driver actually collected today, from real `PAYMENT` rows. The mockup also showed the balance in dollars, which does not fit a Sri Lankan bus service. |
+| Emergency Contacts | Omitted | Needs a new entity, and no functional requirement covers it. |
+| Notification Settings | Replaced with Support and Delay history | Alert subscriptions are a passenger feature; these are the two things a driver actually returns to. |
+
+Agreed with the team on 2026-10-07: build the Profile screen from data the ERD already holds rather
+than expanding the data model for rows that no requirement asks for.

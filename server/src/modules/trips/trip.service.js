@@ -122,10 +122,46 @@ async function getDriverTripOverview(userId) {
   };
 }
 
+/**
+ * The driver's own record, for the Profile screen: who they are, the documents an administrator
+ * registered them with, the bus they drive, and how many runs they have completed.
+ * Only facts the data model already holds are returned; nothing is estimated.
+ * @param {string} userId - Signed-in driver's user id.
+ * @returns {Promise<object>} Driver profile summary.
+ */
+async function getDriverProfileSummary(userId) {
+  const driverProfile = await DriverProfile.findOne({ userId }).populate(
+    'userId',
+    'fullName email mobile role status createdAt'
+  );
+  if (!driverProfile) {
+    throw new AppError('No driver profile is linked to your account.', HTTP_STATUS.FORBIDDEN);
+  }
+
+  const [assignedBus, completedTripCount, ongoingTrip] = await Promise.all([
+    Bus.findOne({ driverId: driverProfile.id }).populate('routeId', 'routeNumber origin destination'),
+    Trip.countDocuments({ driverId: driverProfile.id, status: TRIP_STATUSES.COMPLETED }),
+    getOngoingTripForDriver(driverProfile.id),
+  ]);
+
+  return {
+    driverId: driverProfile.id,
+    account: driverProfile.userId,
+    licenseNumber: driverProfile.licenseNumber,
+    nic: driverProfile.nic,
+    registeredAt: driverProfile.createdAt,
+    bus: assignedBus,
+    route: assignedBus?.routeId || null,
+    completedTripCount,
+    isTripRunning: Boolean(ongoingTrip),
+  };
+}
+
 module.exports = {
   getOngoingTripForDriver,
   getDriverProfileForUser,
   startTrip,
   endTrip,
   getDriverTripOverview,
+  getDriverProfileSummary,
 };

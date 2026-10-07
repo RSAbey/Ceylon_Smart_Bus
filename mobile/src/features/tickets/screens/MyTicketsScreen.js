@@ -1,39 +1,50 @@
-// My Tickets (Member 03, FR-05): the passenger's tickets with status tabs and a card per ticket.
+// My Tickets (Member 03, FR-05): the ticket the passenger is about to travel on, then the ones
+// behind them. Split this way because a passenger opening this screen at a bus stop wants one
+// thing: the QR code for the journey they are about to make.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
-import AppHeader from '../../../components/navigation/AppHeader';
 import AppCard from '../../../components/ui/AppCard';
 import AppButton from '../../../components/ui/AppButton';
 import StatusBadge from '../../../components/ui/StatusBadge';
 import LoadingState from '../../../components/feedback/LoadingState';
 import ErrorState from '../../../components/feedback/ErrorState';
 import EmptyState from '../../../components/feedback/EmptyState';
+import { useAuth } from '../../../context/AuthContext';
 import { useDrawer } from '../../../components/navigation/DrawerContext';
-import { MIN_TOUCH_TARGET, colors, radii, sizes, spacing, typography } from '../../../theme';
+import { colors, radii, sizes, spacing, typography } from '../../../theme';
 import { fetchMyTickets } from '../services/ticketApi';
+import { formatDepartureTime, formatFare } from '../formatters';
 import {
-  CURRENCY_PREFIX,
+  BUY_TICKET_LABEL,
+  OFFLINE_PILL,
   TICKET_BADGES,
-  TICKET_FILTER_TABS,
   TICKET_STATUSES,
   TICKETS_EMPTY,
   UNPAID_BADGE,
-  BUY_TICKET_LABEL,
 } from '../constants';
 
 /**
- * The passenger's ticket list. Tapping a ticket opens its QR code.
+ * A ticket is "upcoming" while it can still be used: active, and paid or waiting to be paid.
+ * @param {object} ticketView - A ticket from the API.
+ * @returns {boolean} True when it belongs in the Upcoming section.
+ */
+function isUpcomingTicket(ticketView) {
+  return ticketView.ticket.status === TICKET_STATUSES.ACTIVE;
+}
+
+/**
+ * The passenger's ticket list.
  * @returns {import('react').JSX.Element} The screen.
  */
 export default function MyTicketsScreen() {
   const router = useRouter();
   const drawer = useDrawer();
+  const { user } = useAuth();
 
   const [tickets, setTickets] = useState([]);
-  const [selectedStatus, setSelectedStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [reloadCounter, setReloadCounter] = useState(0);
@@ -45,7 +56,7 @@ export default function MyTicketsScreen() {
 
   useEffect(() => {
     let isEffectActive = true;
-    fetchMyTickets(selectedStatus)
+    fetchMyTickets()
       .then((loadedTickets) => {
         if (!isEffectActive) return;
         setTickets(loadedTickets);
@@ -60,60 +71,44 @@ export default function MyTicketsScreen() {
     return () => {
       isEffectActive = false;
     };
-  }, [selectedStatus, reloadCounter]);
-
-  /**
-   * Switches tab. The spinner is turned on here rather than inside the effect, because React 19
-   * treats a synchronous setState inside an effect as a cascading render.
-   * @param {string} tabStatus - The tab's TICKET_STATUSES value, or an empty string for All.
-   * @returns {void}
-   */
-  function showTicketsForStatus(tabStatus) {
-    setIsLoading(true);
-    setSelectedStatus(tabStatus);
-  }
+  }, [reloadCounter]);
 
   const screenHeader = (
-    <AppHeader variant="back" title="My Tickets" onMenuPress={drawer ? drawer.openDrawer : undefined} />
+    <View style={styles.header}>
+      <View style={styles.headerTextBlock}>
+        <Text style={typography.heading2}>My Tickets</Text>
+        <Text style={[typography.bodySmall, styles.mutedText]}>
+          Hi, {user?.fullName?.split(' ')[0] || 'there'}
+        </Text>
+      </View>
+      {drawer && (
+        <AppButton
+          label="Menu"
+          variant="text"
+          size="small"
+          iconName="menu"
+          accessibilityLabel="Open menu"
+          onPress={drawer.openDrawer}
+        />
+      )}
+    </View>
   );
 
-  const buyTicketButton = (
+  const bookSeatButton = (
     <AppButton
       label={BUY_TICKET_LABEL}
+      variant="secondary"
       size="large"
       isFullWidth
-      iconName="add"
-      accessibilityLabel="Buy my ticket: choose a bus and seats"
+      iconName="ticket-outline"
+      accessibilityLabel="Book a seat: choose a bus and seats"
       onPress={() => router.push('/(passenger)/ticket/new')}
     />
-  );
-
-  const statusTabs = (
-    <View style={styles.tabRow}>
-      {TICKET_FILTER_TABS.map((filterTab) => {
-        const isSelectedTab = filterTab.status === selectedStatus;
-        return (
-          <Pressable
-            key={filterTab.label}
-            onPress={() => showTicketsForStatus(filterTab.status)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isSelectedTab }}
-            accessibilityLabel={`Show ${filterTab.label} tickets`}
-            style={[styles.tabButton, isSelectedTab && styles.tabButtonSelected]}
-          >
-            <Text style={[typography.label, isSelectedTab && styles.tabTextSelected]}>
-              {filterTab.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
   );
 
   if (isLoading) {
     return (
       <ScreenContainer header={screenHeader}>
-        {statusTabs}
         <LoadingState message="Loading your tickets..." />
       </ScreenContainer>
     );
@@ -121,7 +116,6 @@ export default function MyTicketsScreen() {
   if (loadErrorMessage) {
     return (
       <ScreenContainer header={screenHeader}>
-        {statusTabs}
         <ErrorState message={loadErrorMessage} onRetry={reloadTickets} />
       </ScreenContainer>
     );
@@ -129,7 +123,6 @@ export default function MyTicketsScreen() {
   if (tickets.length === 0) {
     return (
       <ScreenContainer header={screenHeader}>
-        {statusTabs}
         <EmptyState
           iconName="ticket-outline"
           title={TICKETS_EMPTY.title}
@@ -141,99 +134,175 @@ export default function MyTicketsScreen() {
     );
   }
 
+  const upcomingTickets = tickets.filter(isUpcomingTicket);
+  const pastTickets = tickets.filter((ticketView) => !isUpcomingTicket(ticketView));
+
   return (
     <ScreenContainer isScrollable header={screenHeader}>
-      {statusTabs}
-      {buyTicketButton}
+      <Text style={[typography.sectionHeading, styles.mutedText]}>Upcoming</Text>
 
-      {tickets.map((ticketView) => {
-        const ticketBadge = TICKET_BADGES[ticketView.ticket.status];
-        const isAwaitingPayment =
-          ticketView.ticket.status === TICKET_STATUSES.ACTIVE && !ticketView.isPaid;
-        return (
-          <AppCard
-            key={ticketView.ticket.id}
-            onPress={() => router.push(`/(passenger)/ticket/${ticketView.ticket.id}`)}
-            accessibilityLabel={`Ticket ${ticketView.ticket.ticketKey}, route ${ticketView.route?.routeNumber}, ${ticketBadge.label}`}
-          >
-            <View style={styles.cardHeaderRow}>
-              <View style={styles.routeBadge}>
-                <Ionicons name="ticket" size={sizes.iconMedium} color={colors.primary[600]} />
-              </View>
-              <View style={styles.cardHeaderText}>
-                <Text style={typography.heading3}>Route {ticketView.route?.routeNumber}</Text>
-                <Text style={[typography.caption, styles.mutedText]}>
-                  {ticketView.ticket.ticketKey}
-                </Text>
-              </View>
-              <StatusBadge status={ticketBadge.status} label={ticketBadge.label} />
-            </View>
-
-            <Text style={typography.bodyLarge}>
-              {ticketView.boardingStop?.stopName} to {ticketView.alightingStop?.stopName}
+      {upcomingTickets.length === 0 ? (
+        <AppCard>
+          <View style={styles.noUpcomingBlock}>
+            <Ionicons name="ticket-outline" size={sizes.iconHuge} color={colors.text.secondary} />
+            <Text style={[typography.bodyMedium, styles.centredMutedText]}>
+              No ticket for an upcoming journey.
             </Text>
-
-            <View style={styles.detailRow}>
-              <Ionicons
-                name="person-outline"
-                size={sizes.iconSmall}
-                color={colors.text.secondary}
-              />
-              <Text style={[typography.bodySmall, styles.mutedText]}>
-                {ticketView.seatNumbers.length === 1 ? 'Seat' : 'Seats'}{' '}
-                {ticketView.seatNumbers.join(', ') || 'released'}
-              </Text>
-              <Ionicons name="cash-outline" size={sizes.iconSmall} color={colors.text.secondary} />
-              <Text style={[typography.bodySmall, styles.mutedText]}>
-                {CURRENCY_PREFIX} {ticketView.ticket.fareAmount}
-              </Text>
-            </View>
-
-            {isAwaitingPayment && (
-              <View style={styles.unpaidRow}>
-                <StatusBadge status={UNPAID_BADGE.status} label={UNPAID_BADGE.label} />
-                <AppButton
-                  label="Pay now"
-                  size="small"
-                  onPress={() => router.push(`/(passenger)/payment/${ticketView.ticket.id}`)}
+          </View>
+        </AppCard>
+      ) : (
+        upcomingTickets.map((ticketView) => {
+          const ticketBadge = TICKET_BADGES[ticketView.ticket.status];
+          const isAwaitingPayment = !ticketView.isPaid;
+          return (
+            <AppCard key={ticketView.ticket.id}>
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.routeBadge}>
+                  <Ionicons name="bus" size={sizes.iconMedium} color={colors.primary[600]} />
+                </View>
+                <View style={styles.cardHeaderText}>
+                  <Text style={typography.heading3}>Bus {ticketView.route?.routeNumber}</Text>
+                  <Text style={[typography.bodySmall, styles.mutedText]}>
+                    {ticketView.boardingStop?.stopName} &#8594;{' '}
+                    {ticketView.alightingStop?.stopName}
+                  </Text>
+                </View>
+                <StatusBadge
+                  status={isAwaitingPayment ? UNPAID_BADGE.status : ticketBadge.status}
+                  label={isAwaitingPayment ? UNPAID_BADGE.label : ticketBadge.label}
                 />
               </View>
-            )}
+
+              <View style={styles.detailDivider} />
+
+              <View style={styles.detailGrid}>
+                <View style={styles.detailBlock}>
+                  <Text style={[typography.caption, styles.mutedText]}>Departs</Text>
+                  <Text style={typography.bodyMedium}>
+                    {formatDepartureTime(ticketView.departsAt)}
+                  </Text>
+                </View>
+                <View style={styles.detailBlock}>
+                  <Text style={[typography.caption, styles.mutedText]}>
+                    {ticketView.seatNumbers.length === 1 ? 'Seat' : 'Seats'}
+                  </Text>
+                  <Text style={typography.bodyMedium}>
+                    {ticketView.seatNumbers.join(', ') || 'Released'}
+                  </Text>
+                </View>
+                <View style={styles.detailBlock}>
+                  <Text style={[typography.caption, styles.mutedText]}>Fare</Text>
+                  <Text style={typography.bodyMedium}>
+                    {formatFare(ticketView.ticket.fareAmount)}
+                  </Text>
+                </View>
+              </View>
+
+              {ticketView.isPaid && (
+                <View style={styles.offlinePill}>
+                  <Ionicons
+                    name="cloud-offline-outline"
+                    size={sizes.iconSmall}
+                    color={colors.primary[600]}
+                  />
+                  <Text style={[typography.bodySmall, styles.offlinePillText]}>
+                    {OFFLINE_PILL.online.label}
+                  </Text>
+                </View>
+              )}
+
+              <AppButton
+                label={ticketView.isPaid ? 'View ticket' : 'Pay the fare'}
+                size="large"
+                isFullWidth
+                iconName={ticketView.isPaid ? 'qr-code-outline' : 'card-outline'}
+                onPress={() =>
+                  router.push(
+                    ticketView.isPaid
+                      ? `/(passenger)/ticket/${ticketView.ticket.id}`
+                      : `/(passenger)/payment/${ticketView.ticket.id}`
+                  )
+                }
+              />
+            </AppCard>
+          );
+        })
+      )}
+
+      {bookSeatButton}
+
+      {pastTickets.length > 0 && (
+        <>
+          <Text style={[typography.sectionHeading, styles.mutedText]}>Recent tickets</Text>
+          <AppCard>
+            {pastTickets.map((ticketView, ticketIndex) => {
+              const ticketBadge = TICKET_BADGES[ticketView.ticket.status];
+              return (
+                <View
+                  key={ticketView.ticket.id}
+                  style={[styles.pastRow, ticketIndex > 0 && styles.pastRowDivided]}
+                >
+                  <View style={styles.pastBadge}>
+                    <Ionicons
+                      name="ticket-outline"
+                      size={sizes.iconMedium}
+                      color={colors.text.secondary}
+                    />
+                  </View>
+                  <View style={styles.pastTextBlock}>
+                    <Text style={typography.bodyMedium}>
+                      {ticketView.boardingStop?.stopName} &#8594;{' '}
+                      {ticketView.alightingStop?.stopName}
+                    </Text>
+                    <Text style={[typography.caption, styles.mutedText]}>
+                      {formatDepartureTime(ticketView.departsAt)}
+                    </Text>
+                  </View>
+                  <View style={styles.pastAmountBlock}>
+                    <Text style={typography.bodyMedium}>
+                      {formatFare(ticketView.ticket.fareAmount)}
+                    </Text>
+                    <StatusBadge status={ticketBadge.status} label={ticketBadge.label} />
+                  </View>
+                </View>
+              );
+            })}
           </AppCard>
-        );
-      })}
+        </>
+      )}
     </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  tabRow: {
+  header: {
     flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  tabButton: {
-    flex: 1,
-    minHeight: MIN_TOUCH_TARGET,
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.md,
-    borderWidth: sizes.borderThin,
-    borderColor: colors.border,
+    gap: spacing.md,
+    paddingHorizontal: sizes.screenGutter,
+    paddingVertical: spacing.md,
     backgroundColor: colors.surface,
   },
-  tabButtonSelected: {
-    borderColor: colors.primary[500],
-    backgroundColor: colors.primary[100],
+  headerTextBlock: {
+    flex: 1,
+    gap: spacing.xxs,
   },
-  tabTextSelected: {
-    color: colors.primary[600],
+  mutedText: {
+    color: colors.text.secondary,
+  },
+  centredMutedText: {
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  noUpcomingBlock: {
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.lg,
   },
   cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    marginBottom: spacing.sm,
   },
   routeBadge: {
     width: sizes.avatar,
@@ -247,22 +316,57 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xxs,
   },
-  mutedText: {
-    color: colors.text.secondary,
+  detailDivider: {
+    height: sizes.borderThin,
+    backgroundColor: colors.border,
+    marginVertical: spacing.lg,
   },
-  detailRow: {
+  detailGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  detailBlock: {
+    gap: spacing.xxs,
+  },
+  offlinePill: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginTop: spacing.sm,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary[100],
   },
-  unpaidRow: {
+  offlinePillText: {
+    color: colors.primary[600],
+  },
+  pastRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  pastRowDivided: {
     borderTopWidth: sizes.borderThin,
     borderTopColor: colors.border,
+  },
+  pastBadge: {
+    width: sizes.avatar,
+    height: sizes.avatar,
+    borderRadius: radii.md,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pastTextBlock: {
+    flex: 1,
+    gap: spacing.xxs,
+  },
+  pastAmountBlock: {
+    alignItems: 'flex-end',
+    gap: spacing.xxs,
   },
 });
