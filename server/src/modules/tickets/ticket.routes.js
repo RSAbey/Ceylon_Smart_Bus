@@ -15,6 +15,8 @@ const ticketRouter = express.Router();
 ticketRouter.use(authenticateToken);
 
 ticketRouter.get('/', listTicketsValidationRules, validateRequest, ticketController.listMyTickets);
+// Must sit above /:ticketId so "available-buses" is not read as a ticket id.
+ticketRouter.get('/available-buses', ticketController.listBookableTrips);
 ticketRouter.post('/', createTicketValidationRules, validateRequest, ticketController.createTicket);
 ticketRouter.get(
   '/:ticketId',

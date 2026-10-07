@@ -71,7 +71,8 @@ function VerificationResultCard({ verification, onCheckAnother }) {
             {verification.ticket.boardingStopName} to {verification.ticket.alightingStopName}
           </Text>
           <Text style={[typography.bodySmall, styles.mutedText]}>
-            Seat {verification.ticket.seatNumber || 'released'} · {CURRENCY_PREFIX}{' '}
+            {verification.ticket.seatNumbers?.length === 1 ? 'Seat' : 'Seats'}{' '}
+            {verification.ticket.seatNumbers?.join(', ') || 'released'} · {CURRENCY_PREFIX}{' '}
             {verification.ticket.fareAmount} · {verification.ticket.ticketKey}
           </Text>
         </View>

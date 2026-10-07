@@ -6,7 +6,8 @@ const createTicketValidationRules = [
   body('tripId').isMongoId().withMessage('Choose the bus you are travelling on.'),
   body('boardingStopId').isMongoId().withMessage('Choose where you will get on.'),
   body('alightingStopId').isMongoId().withMessage('Choose where you will get off.'),
-  body('seatNumber').trim().notEmpty().withMessage('Choose a seat from the seat map.'),
+  body('seatNumbers').isArray({ min: 1 }).withMessage('Choose at least one seat.'),
+  body('seatNumbers.*').trim().notEmpty().withMessage('Choose seats from the seat map.'),
 ];
 
 /** Every field is optional on an edit, but at least one must change for the request to mean anything. */
@@ -14,7 +15,8 @@ const updateTicketValidationRules = [
   param('ticketId').isMongoId().withMessage('Ticket not found.'),
   body('boardingStopId').optional().isMongoId().withMessage('Choose where you will get on.'),
   body('alightingStopId').optional().isMongoId().withMessage('Choose where you will get off.'),
-  body('seatNumber').optional().trim().notEmpty().withMessage('Choose a seat from the seat map.'),
+  body('seatNumbers').optional().isArray({ min: 1 }).withMessage('Choose at least one seat.'),
+  body('seatNumbers.*').optional().trim().notEmpty().withMessage('Choose seats from the seat map.'),
 ];
 
 const ticketIdValidationRules = [param('ticketId').isMongoId().withMessage('Ticket not found.')];

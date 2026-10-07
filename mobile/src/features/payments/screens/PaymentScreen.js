@@ -1,5 +1,5 @@
-// Payment (Member 03, FR-07): confirm the fare and choose a method. Payments are mocked for the
-// prototype, so no card details are ever collected or stored.
+// Payment (Member 03, FR-07): confirm the fare, choose a method, and for a card enter the demo
+// details. Payments are mocked for the prototype: nothing is charged and no card is stored.
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -11,11 +11,24 @@ import AppButton from '../../../components/ui/AppButton';
 import LoadingState from '../../../components/feedback/LoadingState';
 import ErrorState from '../../../components/feedback/ErrorState';
 import { useToast } from '../../../components/ui/ToastMessage';
+import CardDetailsForm from '../components/CardDetailsForm';
 import { MIN_TOUCH_TARGET, colors, radii, sizes, spacing, typography } from '../../../theme';
 import { fetchPaymentMethods, payForTicket } from '../services/paymentApi';
 import { fetchTicketDetails } from '../../tickets/services/ticketApi';
-import { CURRENCY_PREFIX } from '../../tickets/constants';
-import { PAYMENT_MESSAGES, PAYMENT_METHOD_ICONS } from '../constants';
+import { formatFare } from '../../tickets/formatters';
+import {
+  PAYMENT_MESSAGES,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_ICONS,
+  WALLET_MESSAGES,
+} from '../constants';
+
+const EMPTY_CARD_DETAILS = Object.freeze({
+  cardNumber: '',
+  cardHolderName: '',
+  cardExpiry: '',
+  cardCvv: '',
+});
 
 /**
  * Loads the ticket being paid for and the available methods together.
@@ -31,7 +44,7 @@ async function loadPaymentScreen(ticketId) {
 }
 
 /**
- * Fare confirmation and payment method choice.
+ * Fare confirmation, method choice and the demo card form.
  * @returns {import('react').JSX.Element} The screen.
  */
 export default function PaymentScreen() {
@@ -42,6 +55,8 @@ export default function PaymentScreen() {
   const [ticketView, setTicketView] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [chosenMethod, setChosenMethod] = useState('');
+  const [cardDetails, setCardDetails] = useState(EMPTY_CARD_DETAILS);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [isPaying, setIsPaying] = useState(false);
@@ -71,12 +86,17 @@ export default function PaymentScreen() {
 
   const payNow = async () => {
     setIsPaying(true);
+    setFieldErrors({});
     try {
-      await payForTicket({ ticketId, method: chosenMethod });
+      const paymentRequest = { ticketId, method: chosenMethod };
+      // Card fields only travel when the passenger picked card, and the server never stores them.
+      if (chosenMethod === PAYMENT_METHODS.CARD) Object.assign(paymentRequest, cardDetails);
+      await payForTicket(paymentRequest);
       showSuccessToast(PAYMENT_MESSAGES.paid);
       router.replace(`/(passenger)/ticket/${ticketId}`);
     } catch (payError) {
       showErrorToast(payError.message);
+      setFieldErrors(payError.fieldErrors || {});
     } finally {
       setIsPaying(false);
     }
@@ -105,18 +125,14 @@ export default function PaymentScreen() {
     );
   }
 
-  const { ticket, route, boardingStop, alightingStop, seatNumber, isPaid } = ticketView;
+  const { ticket, route, boardingStop, alightingStop, seatNumbers, isPaid, perSeatFare } = ticketView;
 
   if (isPaid) {
     return (
       <ScreenContainer header={screenHeader}>
         <AppCard>
           <View style={styles.paidBlock}>
-            <Ionicons
-              name="checkmark-circle"
-              size={sizes.iconHuge}
-              color={colors.success.dark}
-            />
+            <Ionicons name="checkmark-circle" size={sizes.iconHuge} color={colors.success.dark} />
             <Text style={typography.heading3}>This fare is already paid</Text>
             <Text style={[typography.bodyMedium, styles.centredText]}>
               Ticket {ticket.ticketKey} is ready to use.
@@ -133,16 +149,24 @@ export default function PaymentScreen() {
     );
   }
 
+  const walletMethod = paymentMethods.find(
+    (paymentMethod) => paymentMethod.method === PAYMENT_METHODS.WALLET
+  );
+  const isWalletShort = (walletMethod?.balance || 0) < ticket.fareAmount;
+  const isCardChosen = chosenMethod === PAYMENT_METHODS.CARD;
+
   return (
     <ScreenContainer isScrollable header={screenHeader}>
       <AppCard>
         <Text style={[typography.sectionHeading, styles.mutedText]}>Fare to pay</Text>
-        <Text style={[typography.display, styles.fareText]}>
-          {CURRENCY_PREFIX} {ticket.fareAmount}
+        <Text style={[typography.display, styles.fareText]}>{formatFare(ticket.fareAmount)}</Text>
+        <Text style={[typography.caption, styles.mutedText]}>
+          {seatNumbers.length} {seatNumbers.length === 1 ? 'seat' : 'seats'} &#215;{' '}
+          {formatFare(perSeatFare)}
         </Text>
         <View style={styles.summaryDivider} />
         <Text style={typography.bodyMedium}>
-          Route {route?.routeNumber} · Seat {seatNumber || 'released'}
+          Route {route?.routeNumber} &#183; {seatNumbers.join(', ') || 'no seats'}
         </Text>
         <Text style={[typography.bodySmall, styles.mutedText]}>
           {boardingStop?.stopName} to {alightingStop?.stopName}
@@ -155,14 +179,21 @@ export default function PaymentScreen() {
 
       {paymentMethods.map((paymentMethod) => {
         const isChosen = paymentMethod.method === chosenMethod;
+        const isWalletRow = paymentMethod.method === PAYMENT_METHODS.WALLET;
+        const isRowDisabled = isWalletRow && isWalletShort;
         return (
           <Pressable
             key={paymentMethod.method}
             onPress={() => setChosenMethod(paymentMethod.method)}
+            disabled={isRowDisabled}
             accessibilityRole="radio"
-            accessibilityState={{ checked: isChosen }}
+            accessibilityState={{ checked: isChosen, disabled: isRowDisabled }}
             accessibilityLabel={`${paymentMethod.label}. ${paymentMethod.hint}`}
-            style={[styles.methodRow, isChosen && styles.methodRowChosen]}
+            style={[
+              styles.methodRow,
+              isChosen && styles.methodRowChosen,
+              isRowDisabled && styles.methodRowDisabled,
+            ]}
           >
             <Ionicons
               name={PAYMENT_METHOD_ICONS[paymentMethod.method]}
@@ -171,16 +202,38 @@ export default function PaymentScreen() {
             />
             <View style={styles.methodText}>
               <Text style={typography.bodyLarge}>{paymentMethod.label}</Text>
-              <Text style={[typography.caption, styles.mutedText]}>{paymentMethod.hint}</Text>
+              <Text style={[typography.caption, styles.mutedText]}>
+                {isRowDisabled ? WALLET_MESSAGES.notEnough : paymentMethod.hint}
+              </Text>
             </View>
-            <Ionicons
-              name={isChosen ? 'radio-button-on' : 'radio-button-off'}
-              size={sizes.iconLarge}
-              color={isChosen ? colors.primary[600] : colors.text.disabled}
-            />
+            {isWalletRow ? (
+              <AppButton
+                label="Top up"
+                variant="text"
+                size="small"
+                onPress={() => router.push('/(passenger)/wallet')}
+              />
+            ) : (
+              <Ionicons
+                name={isChosen ? 'radio-button-on' : 'radio-button-off'}
+                size={sizes.iconLarge}
+                color={isChosen ? colors.primary[600] : colors.text.disabled}
+              />
+            )}
           </Pressable>
         );
       })}
+
+      {isCardChosen && (
+        <AppCard>
+          <Text style={[typography.sectionHeading, styles.mutedText]}>Card details</Text>
+          <CardDetailsForm
+            cardDetails={cardDetails}
+            onChangeCardDetails={setCardDetails}
+            fieldErrors={fieldErrors}
+          />
+        </AppCard>
+      )}
 
       <View style={styles.noticeRow}>
         <Ionicons
@@ -192,7 +245,7 @@ export default function PaymentScreen() {
       </View>
 
       <AppButton
-        label={`Pay ${CURRENCY_PREFIX} ${ticket.fareAmount}`}
+        label={`Pay ${formatFare(ticket.fareAmount)}`}
         size="large"
         isFullWidth
         iconName="lock-closed-outline"
@@ -234,6 +287,9 @@ const styles = StyleSheet.create({
   methodRowChosen: {
     borderColor: colors.primary[500],
     backgroundColor: colors.primary[100],
+  },
+  methodRowDisabled: {
+    opacity: 0.6,
   },
   methodText: {
     flex: 1,

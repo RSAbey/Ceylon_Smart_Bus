@@ -21,6 +21,7 @@ import {
   TICKET_STATUSES,
   TICKETS_EMPTY,
   UNPAID_BADGE,
+  BUY_TICKET_LABEL,
 } from '../constants';
 
 /**
@@ -76,6 +77,17 @@ export default function MyTicketsScreen() {
     <AppHeader variant="back" title="My Tickets" onMenuPress={drawer ? drawer.openDrawer : undefined} />
   );
 
+  const buyTicketButton = (
+    <AppButton
+      label={BUY_TICKET_LABEL}
+      size="large"
+      isFullWidth
+      iconName="add"
+      accessibilityLabel="Buy my ticket: choose a bus and seats"
+      onPress={() => router.push('/(passenger)/ticket/new')}
+    />
+  );
+
   const statusTabs = (
     <View style={styles.tabRow}>
       {TICKET_FILTER_TABS.map((filterTab) => {
@@ -123,7 +135,7 @@ export default function MyTicketsScreen() {
           title={TICKETS_EMPTY.title}
           message={TICKETS_EMPTY.message}
           actionLabel={TICKETS_EMPTY.actionLabel}
-          onActionPress={() => router.push('/(passenger)/(tabs)/explore')}
+          onActionPress={() => router.push('/(passenger)/ticket/new')}
         />
       </ScreenContainer>
     );
@@ -132,6 +144,7 @@ export default function MyTicketsScreen() {
   return (
     <ScreenContainer isScrollable header={screenHeader}>
       {statusTabs}
+      {buyTicketButton}
 
       {tickets.map((ticketView) => {
         const ticketBadge = TICKET_BADGES[ticketView.ticket.status];
@@ -167,7 +180,8 @@ export default function MyTicketsScreen() {
                 color={colors.text.secondary}
               />
               <Text style={[typography.bodySmall, styles.mutedText]}>
-                Seat {ticketView.seatNumber || 'released'}
+                {ticketView.seatNumbers.length === 1 ? 'Seat' : 'Seats'}{' '}
+                {ticketView.seatNumbers.join(', ') || 'released'}
               </Text>
               <Ionicons name="cash-outline" size={sizes.iconSmall} color={colors.text.secondary} />
               <Text style={[typography.bodySmall, styles.mutedText]}>

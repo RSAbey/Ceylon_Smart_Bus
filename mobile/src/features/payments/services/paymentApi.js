@@ -28,3 +28,22 @@ export async function payForTicket(paymentDetails) {
   const paymentEnvelope = await apiClient.post('/payments', paymentDetails);
   return paymentEnvelope.data;
 }
+
+/**
+ * The passenger's wallet balance and recent statement.
+ * @returns {Promise<{balance: number, transactions: object[]}>} Wallet summary.
+ */
+export async function fetchWallet() {
+  const walletEnvelope = await apiClient.get('/payments/wallet');
+  return walletEnvelope.data;
+}
+
+/**
+ * Adds money to the wallet with the demo card details.
+ * @param {object} topUpDetails - amount plus the four card fields.
+ * @returns {Promise<{balance: number, transactions: object[]}>} Wallet after the top-up.
+ */
+export async function topUpWallet(topUpDetails) {
+  const walletEnvelope = await apiClient.post('/payments/wallet/topup', topUpDetails);
+  return walletEnvelope.data;
+}

@@ -135,7 +135,9 @@ export default function EditTicketScreen() {
           Ticket {ticketView.ticket.ticketKey}
         </Text>
         <Text style={typography.bodyMedium}>
-          Route {ticketView.route?.routeNumber} · Seat {ticketView.seatNumber || 'released'}
+          Route {ticketView.route?.routeNumber} ·{' '}
+          {ticketView.seatNumbers.length === 1 ? 'Seat' : 'Seats'}{' '}
+          {ticketView.seatNumbers.join(', ') || 'released'}
         </Text>
       </AppCard>
 
@@ -205,7 +207,7 @@ export default function EditTicketScreen() {
         onPress={saveChanges}
       />
       <AppButton
-        label="Change my seat instead"
+        label="Change my seats instead"
         variant="outline"
         isFullWidth
         iconName="grid-outline"

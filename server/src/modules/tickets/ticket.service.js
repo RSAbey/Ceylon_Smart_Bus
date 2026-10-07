@@ -1,18 +1,20 @@
 // Ticket business logic (Member 03, FR-05 and FR-06): buying, viewing, changing and cancelling a
 // digital ticket. getActiveTicketHolderIds is a shared contract used by Member 04 (delay notifications).
-const { createHmac, randomInt } = require('node:crypto');
+const { createHmac } = require('node:crypto');
 const Ticket = require('./ticket.model');
 const Trip = require('../trips/trip.model');
 const RouteStop = require('../routes/routeStop.model');
 const Payment = require('../payments/payment.model');
+const User = require('../users/user.model');
 const seatService = require('../seats/seat.service');
 const { TRIP_STATUSES } = require('../trips/trip.constants');
-const { PAYMENT_STATUSES } = require('../payments/payment.constants');
+const { PAYMENT_METHODS, PAYMENT_STATUSES } = require('../payments/payment.constants');
+const walletService = require('../payments/wallet.service');
 const {
   TICKET_STATUSES,
   TICKET_VALID_HOURS,
   TICKET_KEY_PREFIX,
-  TICKET_KEY_DIGITS,
+  TICKET_KEY_SEQUENCE_DIGITS,
   EDITABLE_TICKET_STATUSES,
 } = require('./ticket.constants');
 const environment = require('../../config/environment');
@@ -20,7 +22,9 @@ const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
 const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
-const TICKET_KEY_ATTEMPTS = 5;
+
+/** Retries while two passengers book in the same instant and land on the same sequence number. */
+const MAX_TICKET_KEY_ATTEMPTS = 20;
 
 /**
  * Lists the passengers holding an active ticket on a trip.
@@ -36,23 +40,25 @@ async function getActiveTicketHolderIds(tripId) {
 }
 
 /**
- * Builds a short human-readable ticket key such as "CSB-408213".
- * @returns {string} A candidate ticket key.
- */
-function buildTicketKey() {
-  const lowestKeyNumber = 10 ** (TICKET_KEY_DIGITS - 1);
-  const highestKeyNumber = 10 ** TICKET_KEY_DIGITS;
-  return `${TICKET_KEY_PREFIX}-${randomInt(lowestKeyNumber, highestKeyNumber)}`;
-}
-
-/**
- * Picks a ticket key that no existing ticket uses. A duplicate key would let a driver verify the
- * wrong ticket, so the key is checked instead of trusted.
+ * Builds the day's next ticket key, "CSB-20260919-0417". The sequence counts that day's tickets, so
+ * two tickets issued in the same millisecond still differ.
  * @returns {Promise<string>} An unused ticket key.
  */
 async function reserveUnusedTicketKey() {
-  for (let attemptNumber = 0; attemptNumber < TICKET_KEY_ATTEMPTS; attemptNumber += 1) {
-    const candidateKey = buildTicketKey();
+  const today = new Date();
+  const datePart = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, '0'),
+    String(today.getDate()).padStart(2, '0'),
+  ].join('');
+
+  // Count only this day's tickets, so the sequence restarts each morning as the format implies.
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const ticketsToday = await Ticket.countDocuments({ createdAt: { $gte: startOfDay } });
+
+  for (let offset = 1; offset <= MAX_TICKET_KEY_ATTEMPTS; offset += 1) {
+    const sequencePart = String(ticketsToday + offset).padStart(TICKET_KEY_SEQUENCE_DIGITS, '0');
+    const candidateKey = `${TICKET_KEY_PREFIX}-${datePart}-${sequencePart}`;
     const existingTicket = await Ticket.findOne({ ticketKey: candidateKey });
     if (!existingTicket) return candidateKey;
   }
@@ -125,12 +131,13 @@ async function priceJourney({ routeId, boardingStopId, alightingStopId }) {
  * @returns {Promise<object>} Ticket view used by every ticket screen.
  */
 async function buildTicketView(ticket) {
-  const [boardingStop, alightingStop, seatBooking, payment, trip] = await Promise.all([
+  const [boardingStop, alightingStop, seatNumbers, payment, trip, passenger] = await Promise.all([
     RouteStop.findById(ticket.boardingStopId),
     RouteStop.findById(ticket.alightingStopId),
-    seatService.getSeatForTicket(ticket.id),
+    seatService.getSeatsForTicket(ticket.id),
     Payment.findOne({ ticketId: ticket.id }),
     Trip.findById(ticket.tripId).populate(['busId', 'routeId']),
+    User.findById(ticket.userId).select('fullName'),
   ]);
 
   return {
@@ -138,9 +145,14 @@ async function buildTicketView(ticket) {
     route: trip?.routeId || null,
     bus: trip?.busId || null,
     tripStatus: trip?.status || null,
+    departsAt: trip?.startedAt || null,
+    passengerName: passenger?.fullName || null,
     boardingStop,
     alightingStop,
-    seatNumber: seatBooking?.seatNumber || null,
+    seatNumbers,
+    seatCount: seatNumbers.length,
+    // The ticket stores the total; the screens also show what one seat cost.
+    perSeatFare: seatNumbers.length > 0 ? ticket.fareAmount / seatNumbers.length : ticket.fareAmount,
     payment,
     isPaid: payment?.status === PAYMENT_STATUSES.PAID,
   };
@@ -155,11 +167,13 @@ async function buildTicketView(ticket) {
  */
 async function createTicket(userId, ticketDetails) {
   const matchingTrip = await getTicketableTrip(ticketDetails.tripId);
-  const { fareAmount } = await priceJourney({
+  const { fareAmount: perSeatFare } = await priceJourney({
     routeId: matchingTrip.routeId.id,
     boardingStopId: ticketDetails.boardingStopId,
     alightingStopId: ticketDetails.alightingStopId,
   });
+  // Every seat on the ticket travels the same journey, so the total is the segment fare per seat.
+  const fareAmount = perSeatFare * ticketDetails.seatNumbers.length;
 
   const ticketKey = await reserveUnusedTicketKey();
   const createdTicket = await Ticket.create({
@@ -175,13 +189,13 @@ async function createTicket(userId, ticketDetails) {
   });
 
   try {
-    await seatService.bookSeatForTicket({
+    await seatService.bookSeatsForTicket({
       tripId: matchingTrip.id,
       ticketId: createdTicket.id,
-      seatNumber: ticketDetails.seatNumber,
+      seatNumbers: ticketDetails.seatNumbers,
     });
   } catch (seatError) {
-    // A ticket without a seat is meaningless, so do not leave a half-booked ticket behind.
+    // A ticket without seats is meaningless, so do not leave a half-booked ticket behind.
     await Ticket.findByIdAndDelete(createdTicket.id);
     throw seatError;
   }
@@ -250,23 +264,24 @@ async function updateTicket(userId, ticketId, ticketChanges) {
 
   const nextBoardingStopId = ticketChanges.boardingStopId || editableTicket.boardingStopId;
   const nextAlightingStopId = ticketChanges.alightingStopId || editableTicket.alightingStopId;
-  const { fareAmount } = await priceJourney({
+  const { fareAmount: perSeatFare } = await priceJourney({
     routeId: editableTicket.routeId,
     boardingStopId: nextBoardingStopId,
     alightingStopId: nextAlightingStopId,
   });
 
-  if (ticketChanges.seatNumber) {
-    await seatService.changeSeatForTicket({
+  if (ticketChanges.seatNumbers) {
+    await seatService.changeSeatsForTicket({
       tripId: editableTicket.tripId,
       ticketId: editableTicket.id,
-      seatNumber: ticketChanges.seatNumber,
+      seatNumbers: ticketChanges.seatNumbers,
     });
   }
 
+  const currentSeatNumbers = await seatService.getSeatsForTicket(editableTicket.id);
   editableTicket.boardingStopId = nextBoardingStopId;
   editableTicket.alightingStopId = nextAlightingStopId;
-  editableTicket.fareAmount = fareAmount;
+  editableTicket.fareAmount = perSeatFare * Math.max(1, currentSeatNumbers.length);
   await editableTicket.save();
 
   return buildTicketView(editableTicket);
@@ -291,17 +306,61 @@ async function cancelTicket(userId, ticketId) {
   cancellableTicket.cancelledAt = new Date();
   await cancellableTicket.save();
 
-  await seatService.releaseSeatForTicket(cancellableTicket.id);
-  await Payment.updateOne(
-    { ticketId: cancellableTicket.id, status: PAYMENT_STATUSES.PAID },
-    { status: PAYMENT_STATUSES.REFUNDED }
-  );
+  await seatService.releaseSeatsForTicket(cancellableTicket.id);
+
+  const paidPayment = await Payment.findOne({
+    ticketId: cancellableTicket.id,
+    status: PAYMENT_STATUSES.PAID,
+  });
+  if (paidPayment) {
+    paidPayment.status = PAYMENT_STATUSES.REFUNDED;
+    await paidPayment.save();
+    // A fare paid from the wallet goes straight back to the wallet, so the balance stays truthful.
+    if (paidPayment.method === PAYMENT_METHODS.WALLET) {
+      await walletService.refundToWallet(userId, {
+        amount: paidPayment.amount,
+        description: `Refund for ticket ${cancellableTicket.ticketKey}`,
+        ticketId: cancellableTicket.id,
+      });
+    }
+  }
 
   return buildTicketView(cancellableTicket);
 }
 
+/**
+ * The buses a passenger can buy a ticket on right now: every ongoing trip with its route, departure
+ * time, per-seat fare and how many seats are left. This is what the "+" button on My Tickets opens.
+ * @returns {Promise<object[]>} Bookable trips, fullest routes last.
+ */
+async function listBookableTrips() {
+  const runningTrips = await Trip.find({ status: TRIP_STATUSES.ONGOING }).populate([
+    'busId',
+    'routeId',
+  ]);
+
+  const bookableTrips = await Promise.all(
+    runningTrips
+      .filter((runningTrip) => runningTrip.busId && runningTrip.routeId)
+      .map(async (runningTrip) => {
+        const bookedSeatCount = await seatService.countBookedSeats(runningTrip.id);
+        return {
+          tripId: runningTrip.id,
+          route: runningTrip.routeId,
+          bus: runningTrip.busId,
+          departsAt: runningTrip.startedAt,
+          baseFare: runningTrip.routeId.baseFare,
+          availableSeats: runningTrip.busId.capacity - bookedSeatCount,
+          capacity: runningTrip.busId.capacity,
+        };
+      })
+  );
+  return bookableTrips.sort((firstTrip, secondTrip) => secondTrip.availableSeats - firstTrip.availableSeats);
+}
+
 module.exports = {
   getActiveTicketHolderIds,
+  listBookableTrips,
   buildQrSignature,
   buildTicketView,
   createTicket,

@@ -27,6 +27,36 @@ export const PAYMENT_BADGES = Object.freeze({
   [PAYMENT_STATUSES.FAILED]: { status: 'invalid', label: 'Failed' },
 });
 
+/** Must match server/src/modules/payments/payment.constants.js. */
+export const CARD_NUMBER_DIGITS = 16;
+export const CARD_CVV_DIGITS = 3;
+export const CARD_NUMBER_GROUP_SIZE = 4;
+export const MIN_TOPUP_AMOUNT = 100;
+export const MAX_TOPUP_AMOUNT = 10000;
+export const TOPUP_PRESET_AMOUNTS = Object.freeze([500, 1000, 2000, 5000]);
+
+/** Wallet statement line types, and how each is shown. */
+export const WALLET_TRANSACTION_TYPES = Object.freeze({
+  TOPUP: 'topup',
+  FARE: 'fare',
+  REFUND: 'refund',
+});
+
+export const WALLET_LINE_STYLES = Object.freeze({
+  [WALLET_TRANSACTION_TYPES.TOPUP]: { iconName: 'add-circle-outline', sign: '+' },
+  [WALLET_TRANSACTION_TYPES.FARE]: { iconName: 'bus-outline', sign: '-' },
+  [WALLET_TRANSACTION_TYPES.REFUND]: { iconName: 'return-down-back-outline', sign: '+' },
+});
+
+export const WALLET_MESSAGES = Object.freeze({
+  title: 'Mobile Wallet',
+  balanceLabel: 'Available balance',
+  topUpTitle: 'Top up your wallet',
+  chooseAmount: 'Choose an amount',
+  emptyStatement: 'No wallet activity yet. Top up to pay fares in one tap.',
+  notEnough: 'Not enough balance for this fare. Top up to use the wallet.',
+});
+
 export const PAYMENT_MESSAGES = Object.freeze({
   chooseMethod: 'Choose how you want to pay.',
   mockNotice: 'This is a university prototype, so no real money moves and no card details are stored.',

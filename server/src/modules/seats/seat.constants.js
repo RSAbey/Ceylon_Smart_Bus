@@ -10,9 +10,13 @@ const SEATS_PER_ROW = 4;
 const SEAT_COLUMN_LABELS = Object.freeze(['A', 'B', 'C', 'D']);
 const FIRST_ROW_NUMBER = 1;
 
+/** A group booking stays on one ticket; beyond this it should be split, as a conductor would expect. */
+const MAX_SEATS_PER_TICKET = 6;
+
 module.exports = {
   SEAT_BOOKING_STATUSES,
   SEATS_PER_ROW,
   SEAT_COLUMN_LABELS,
   FIRST_ROW_NUMBER,
+  MAX_SEATS_PER_TICKET,
 };

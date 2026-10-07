@@ -5,15 +5,14 @@ const sendResponse = require('../../utils/sendResponse');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
 /**
- * GET /api/payments/methods - the payment methods the app accepts.
- * @param {import('express').Request} _request - Unused.
+ * GET /api/payments/methods - the accepted methods, including the live wallet balance.
+ * @param {import('express').Request} request - Express request.
  * @param {import('express').Response} response - Express response.
- * @returns {void} Nothing; the response is sent.
+ * @returns {Promise<void>} Resolves when the response is sent.
  */
-function listPaymentMethods(_request, response) {
-  sendResponse(response, 'Payment methods loaded.', {
-    paymentMethods: paymentService.listPaymentMethods(),
-  });
+async function listPaymentMethods(request, response) {
+  const paymentMethods = await paymentService.listPaymentMethods(request.user.userId);
+  sendResponse(response, 'Payment methods loaded.', { paymentMethods });
 }
 
 /**
@@ -50,7 +49,7 @@ async function getFinanceSummary(_request, response) {
 }
 
 module.exports = {
-  listPaymentMethods,
+  listPaymentMethods: asyncHandler(listPaymentMethods),
   listMyPayments: asyncHandler(listMyPayments),
   payForTicket: asyncHandler(payForTicket),
   getFinanceSummary: asyncHandler(getFinanceSummary),

@@ -3,6 +3,7 @@
 const Payment = require('./payment.model');
 const Ticket = require('../tickets/ticket.model');
 const notificationService = require('../notifications/notification.service');
+const walletService = require('./wallet.service');
 const { PAYMENT_METHODS, PAYMENT_STATUSES } = require('./payment.constants');
 const { TICKET_STATUSES } = require('../tickets/ticket.constants');
 const { NOTIFICATION_TYPES } = require('../notifications/notification.constants');
@@ -13,25 +14,30 @@ const HTTP_STATUS = require('../../utils/httpStatus');
 const RECENT_TRANSACTION_LIMIT = 20;
 
 /**
- * The payment methods the app accepts, for the Payment Methods screen.
- * @returns {object[]} Each method with the label and hint shown in the list.
+ * The payment methods the app accepts, with the live wallet balance so the Payment screen can show
+ * it and grey the wallet out when it is short.
+ * @param {string} userId - Signed-in passenger.
+ * @returns {Promise<object[]>} Each method with its label, hint and (for the wallet) balance.
  */
-function listPaymentMethods() {
+async function listPaymentMethods(userId) {
+  const { balance } = await walletService.getWalletSummary(userId);
   return [
     {
       method: PAYMENT_METHODS.CARD,
       label: 'Credit or debit card',
-      hint: 'Visa and Mastercard. Charged when you confirm the fare.',
+      hint: 'Visa and Mastercard. Demo only, so no card details are stored.',
+      requiresCardDetails: true,
     },
     {
       method: PAYMENT_METHODS.WALLET,
       label: 'Mobile wallet',
-      hint: 'Pay from a mobile money balance.',
+      hint: `Balance Rs. ${balance}`,
+      balance,
     },
     {
       method: PAYMENT_METHODS.CASH,
       label: 'Cash to the conductor',
-      hint: 'Reserve the seat now and pay on board.',
+      hint: 'Reserve the seats now and pay on board.',
     },
   ];
 }
@@ -72,6 +78,16 @@ async function payForTicket(userId, paymentDetails) {
   const existingPayment = await Payment.findOne({ ticketId: payableTicket.id });
   if (existingPayment?.status === PAYMENT_STATUSES.PAID) {
     throw new AppError('This ticket is already paid for.', HTTP_STATUS.CONFLICT);
+  }
+
+  // Paying from the wallet moves real balance, so it happens before the payment row is written:
+  // if the balance is short this throws and no ticket is wrongly marked paid.
+  if (paymentDetails.method === PAYMENT_METHODS.WALLET) {
+    await walletService.spendFromWallet(userId, {
+      amount: payableTicket.fareAmount,
+      description: `Fare for ticket ${payableTicket.ticketKey}`,
+      ticketId: payableTicket.id,
+    });
   }
 
   // A failed or refunded attempt is replaced, so the passenger can retry with another method.

@@ -1,4 +1,5 @@
-// Book a Ticket (Member 03, FR-06 step 1): choose where to get on and off, see the fare, then pick a seat.
+// Book a Ticket (Member 03, FR-06 step 1). Reached two ways: from a route or live map with the bus
+// already chosen, or from the "Buy my ticket" button with no bus, which adds a bus-picking step first.
 import { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -9,9 +10,11 @@ import AppCard from '../../../components/ui/AppCard';
 import AppButton from '../../../components/ui/AppButton';
 import LoadingState from '../../../components/feedback/LoadingState';
 import ErrorState from '../../../components/feedback/ErrorState';
+import EmptyState from '../../../components/feedback/EmptyState';
 import { MIN_TOUCH_TARGET, colors, radii, sizes, spacing, typography } from '../../../theme';
 import { fetchTripTracking } from '../../tracking/services/trackingApi';
-import { CURRENCY_PREFIX } from '../constants';
+import { fetchBookableTrips } from '../services/ticketApi';
+import { formatDepartureTime, formatFare } from '../formatters';
 
 /**
  * A tappable row showing the chosen stop, or a prompt when nothing is chosen yet.
@@ -42,13 +45,58 @@ function StopField({ label, iconName, selectedStop, placeholder, onPress }) {
 }
 
 /**
- * Ticket booking step one. The trip comes from the bus the passenger chose to track or board.
+ * Step shown when no bus was chosen yet: every bus currently in service.
+ * @param {object} props - Component props.
+ * @param {object[]} props.bookableTrips - Buses with seats left.
+ * @param {Function} props.onChooseTrip - Called with the chosen trip id.
+ * @returns {import('react').JSX.Element} The bus list.
+ */
+function BusPicker({ bookableTrips, onChooseTrip }) {
+  return (
+    <View style={styles.busPickerBlock}>
+      <Text style={[typography.sectionHeading, styles.mutedText]}>
+        {bookableTrips.length} {bookableTrips.length === 1 ? 'bus' : 'buses'} in service now
+      </Text>
+      {bookableTrips.map((bookableTrip) => (
+        <AppCard
+          key={bookableTrip.tripId}
+          onPress={() => onChooseTrip(bookableTrip.tripId)}
+          accessibilityLabel={`Route ${bookableTrip.route.routeNumber}, ${bookableTrip.availableSeats} seats free`}
+        >
+          <View style={styles.busRow}>
+            <View style={styles.routeBadge}>
+              <Ionicons name="bus" size={sizes.iconMedium} color={colors.primary[600]} />
+            </View>
+            <View style={styles.busText}>
+              <Text style={typography.heading3}>Bus {bookableTrip.route.routeNumber}</Text>
+              <Text style={[typography.bodySmall, styles.mutedText]}>
+                {bookableTrip.route.origin} &#8594; {bookableTrip.route.destination}
+              </Text>
+              <Text style={[typography.caption, styles.mutedText]}>
+                {formatDepartureTime(bookableTrip.departsAt)} &#183;{' '}
+                {bookableTrip.availableSeats} seats free
+              </Text>
+            </View>
+            <Text style={[typography.heading3, styles.fareText]}>
+              {formatFare(bookableTrip.baseFare)}
+            </Text>
+          </View>
+        </AppCard>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Ticket booking step one.
  * @returns {import('react').JSX.Element} The screen.
  */
 export default function CreateTicketScreen() {
   const router = useRouter();
-  const { tripId } = useLocalSearchParams();
+  const { tripId: tripIdFromRoute } = useLocalSearchParams();
 
+  const [chosenTripId, setChosenTripId] = useState(tripIdFromRoute || '');
+  const [bookableTrips, setBookableTrips] = useState([]);
   const [trackingCard, setTrackingCard] = useState(null);
   const [boardingStop, setBoardingStop] = useState(null);
   const [alightingStop, setAlightingStop] = useState(null);
@@ -57,15 +105,22 @@ export default function CreateTicketScreen() {
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [reloadCounter, setReloadCounter] = useState(0);
 
-  const reloadTrip = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
+  const reloadScreen = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
 
   useEffect(() => {
     let isEffectActive = true;
-    fetchTripTracking(tripId)
-      .then((loadedTracking) => {
-        if (!isEffectActive) return;
-        setTrackingCard(loadedTracking);
-        setLoadErrorMessage('');
+    // With no bus chosen the screen lists what is running; with one it loads that bus and its stops.
+    const loadScreen = chosenTripId
+      ? fetchTripTracking(chosenTripId).then((loadedTracking) => {
+          if (isEffectActive) setTrackingCard(loadedTracking);
+        })
+      : fetchBookableTrips().then((loadedTrips) => {
+          if (isEffectActive) setBookableTrips(loadedTrips);
+        });
+
+    loadScreen
+      .then(() => {
+        if (isEffectActive) setLoadErrorMessage('');
       })
       .catch((loadError) => {
         if (isEffectActive) setLoadErrorMessage(loadError.message);
@@ -76,12 +131,24 @@ export default function CreateTicketScreen() {
     return () => {
       isEffectActive = false;
     };
-  }, [tripId, reloadCounter]);
+  }, [chosenTripId, reloadCounter]);
+
+  /**
+   * Picks a bus and clears any stops chosen for a previous one.
+   * @param {string} pickedTripId - Trip the passenger tapped.
+   * @returns {void}
+   */
+  function chooseTrip(pickedTripId) {
+    setIsLoading(true);
+    setBoardingStop(null);
+    setAlightingStop(null);
+    setChosenTripId(pickedTripId);
+  }
 
   const screenHeader = (
     <AppHeader
       variant="back"
-      title="Book a Ticket"
+      title={chosenTripId ? 'Book a Ticket' : 'Choose Your Bus'}
       onBackPress={router.canGoBack() ? router.back : undefined}
     />
   );
@@ -89,21 +156,42 @@ export default function CreateTicketScreen() {
   if (isLoading) {
     return (
       <ScreenContainer header={screenHeader}>
-        <LoadingState message="Loading this bus..." />
+        <LoadingState message={chosenTripId ? 'Loading this bus...' : 'Finding buses in service...'} />
       </ScreenContainer>
     );
   }
   if (loadErrorMessage) {
     return (
       <ScreenContainer header={screenHeader}>
-        <ErrorState message={loadErrorMessage} onRetry={reloadTrip} />
+        <ErrorState message={loadErrorMessage} onRetry={reloadScreen} />
+      </ScreenContainer>
+    );
+  }
+
+  if (!chosenTripId) {
+    if (bookableTrips.length === 0) {
+      return (
+        <ScreenContainer header={screenHeader}>
+          <EmptyState
+            iconName="bus-outline"
+            title="No buses running right now"
+            message="Tickets are sold for buses in service. Check the routes to see when the next one starts."
+            actionLabel="Explore routes"
+            onActionPress={() => router.replace('/(passenger)/(tabs)/explore')}
+          />
+        </ScreenContainer>
+      );
+    }
+    return (
+      <ScreenContainer isScrollable header={screenHeader}>
+        <BusPicker bookableTrips={bookableTrips} onChooseTrip={chooseTrip} />
       </ScreenContainer>
     );
   }
 
   const stops = trackingCard?.stops || [];
-  // The fare is only an estimate until the server prices it when the ticket is created.
-  const estimatedFare =
+  // The fare is an estimate until the server prices it when the ticket is created.
+  const perSeatFare =
     boardingStop && alightingStop
       ? Math.max(0, alightingStop.fareFromOrigin - boardingStop.fareFromOrigin)
       : null;
@@ -130,11 +218,14 @@ export default function CreateTicketScreen() {
             <Ionicons name="bus" size={sizes.iconMedium} color={colors.primary[600]} />
           </View>
           <View style={styles.busText}>
-            <Text style={typography.heading3}>Route {trackingCard?.route?.routeNumber}</Text>
+            <Text style={typography.heading3}>Bus {trackingCard?.route?.routeNumber}</Text>
             <Text style={[typography.bodySmall, styles.mutedText]}>
-              {trackingCard?.route?.origin} to {trackingCard?.route?.destination}
+              {trackingCard?.route?.origin} &#8594; {trackingCard?.route?.destination}
             </Text>
           </View>
+          {!tripIdFromRoute && (
+            <AppButton label="Change" variant="text" size="small" onPress={() => chooseTrip('')} />
+          )}
         </View>
       </AppCard>
 
@@ -165,27 +256,25 @@ export default function CreateTicketScreen() {
         </View>
       )}
 
-      {estimatedFare !== null && !isJourneyBackwards && (
+      {perSeatFare !== null && !isJourneyBackwards && (
         <AppCard>
-          <Text style={[typography.sectionHeading, styles.mutedText]}>Fare</Text>
-          <Text style={[typography.display, styles.fareText]}>
-            {CURRENCY_PREFIX} {estimatedFare}
-          </Text>
+          <Text style={[typography.sectionHeading, styles.mutedText]}>Fare per seat</Text>
+          <Text style={[typography.display, styles.fareText]}>{formatFare(perSeatFare)}</Text>
           <Text style={[typography.caption, styles.mutedText]}>
-            Confirmed by the server when you book.
+            Choose your seats next; the total is confirmed by the server when you book.
           </Text>
         </AppCard>
       )}
 
       <AppButton
-        label="Choose a seat"
+        label="Choose seats"
         size="large"
         isFullWidth
         iconName="arrow-forward"
         isDisabled={!canContinue}
         onPress={() =>
           router.push(
-            `/(passenger)/seat-selection/${tripId}?boardingStopId=${boardingStop.id}&alightingStopId=${alightingStop.id}`
+            `/(passenger)/seat-selection/${chosenTripId}?boardingStopId=${boardingStop.id}&alightingStopId=${alightingStop.id}`
           )
         }
       />
@@ -233,6 +322,9 @@ export default function CreateTicketScreen() {
 }
 
 const styles = StyleSheet.create({
+  busPickerBlock: {
+    gap: spacing.lg,
+  },
   busRow: {
     flexDirection: 'row',
     alignItems: 'center',

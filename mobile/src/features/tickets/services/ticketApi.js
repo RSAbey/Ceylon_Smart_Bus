@@ -23,7 +23,7 @@ export async function fetchTicketDetails(ticketId) {
 
 /**
  * Books a ticket on a running bus. The fare comes back priced by the server.
- * @param {object} ticketDetails - tripId, boardingStopId, alightingStopId and seatNumber.
+ * @param {object} ticketDetails - tripId, boardingStopId, alightingStopId and seatNumbers.
  * @returns {Promise<object>} The new ticket view.
  */
 export async function createTicket(ticketDetails) {
@@ -34,7 +34,7 @@ export async function createTicket(ticketDetails) {
 /**
  * Changes the stops or the seat on a ticket that has not been used yet.
  * @param {string} ticketId - Ticket to change.
- * @param {object} ticketChanges - Any of boardingStopId, alightingStopId, seatNumber.
+ * @param {object} ticketChanges - Any of boardingStopId, alightingStopId, seatNumbers.
  * @returns {Promise<object>} The updated ticket view.
  */
 export async function updateTicket(ticketId, ticketChanges) {
@@ -50,4 +50,13 @@ export async function updateTicket(ticketId, ticketChanges) {
 export async function cancelTicket(ticketId) {
   const ticketEnvelope = await apiClient.delete(`/tickets/${ticketId}`);
   return ticketEnvelope.data;
+}
+
+/**
+ * The buses a passenger can buy a ticket on right now, for the "Buy my ticket" picker.
+ * @returns {Promise<object[]>} Bookable trips with route, departure, fare and free seats.
+ */
+export async function fetchBookableTrips() {
+  const tripEnvelope = await apiClient.get('/tickets/available-buses');
+  return tripEnvelope.data.bookableTrips;
 }

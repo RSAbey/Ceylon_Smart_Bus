@@ -1,5 +1,5 @@
-// Seat Selection (Member 03, FR-06 step 2): the bus seat map, 2 + 2 across an aisle.
-// Used twice: to finish a new booking, and to move an existing ticket to another seat.
+// Select Seats (Member 03, FR-06): the bus seat map, 2 + 2 across an aisle, with the row number
+// down the middle. Several seats can go on one ticket, so a group travels on one fare.
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,16 +15,25 @@ import { useToast } from '../../../components/ui/ToastMessage';
 import { colors, radii, sizes, spacing, typography } from '../../../theme';
 import { fetchSeatMap } from '../services/seatApi';
 import { createTicket, updateTicket } from '../../tickets/services/ticketApi';
-import { SEAT_LEGEND, SEAT_MESSAGES, SEAT_SQUARE_SIZE, SEAT_STATES } from '../constants';
+import { CURRENCY_PREFIX } from '../../tickets/constants';
+import { formatDepartureTime } from '../../tickets/formatters';
+import {
+  AISLE_WIDTH,
+  SEAT_LEGEND,
+  SEAT_MESSAGES,
+  SEAT_SQUARE_SIZE,
+  SEAT_STATES,
+  describeSeatCount,
+} from '../constants';
 
 /**
  * Works out which of the three states a seat is in.
  * @param {object} seat - A seat from the seat map.
- * @param {string} chosenSeatNumber - The seat the passenger has tapped.
+ * @param {string[]} chosenSeatNumbers - Seats the passenger has tapped.
  * @returns {string} One of SEAT_STATES.
  */
-function resolveSeatState(seat, chosenSeatNumber) {
-  if (seat.seatNumber === chosenSeatNumber) return SEAT_STATES.SELECTED;
+function resolveSeatState(seat, chosenSeatNumbers) {
+  if (chosenSeatNumbers.includes(seat.seatNumber)) return SEAT_STATES.SELECTED;
   if (seat.isBooked) return SEAT_STATES.BOOKED;
   return SEAT_STATES.AVAILABLE;
 }
@@ -44,23 +53,60 @@ function groupSeatsIntoRows(seats, seatsPerRow) {
 }
 
 /**
- * Seat map screen. With a ticketId it changes that ticket's seat; otherwise it creates the ticket.
+ * One tappable seat square.
+ * @param {object} props - Component props.
+ * @param {object} props.seat - The seat to draw.
+ * @param {string} props.seatState - One of SEAT_STATES.
+ * @param {Function} props.onPress - Called when a free seat is tapped.
+ * @returns {import('react').JSX.Element} The seat square.
+ */
+function SeatSquare({ seat, seatState, onPress }) {
+  const stateLabel = SEAT_LEGEND.find((legendEntry) => legendEntry.state === seatState).label;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={seat.isBooked}
+      accessibilityRole="checkbox"
+      accessibilityState={{ disabled: seat.isBooked, checked: seatState === SEAT_STATES.SELECTED }}
+      accessibilityLabel={`Seat ${seat.seatNumber}, ${stateLabel}`}
+      style={[styles.seatSquare, styles[`seat_${seatState}`]]}
+    >
+      {seatState === SEAT_STATES.BOOKED ? (
+        <Ionicons name="close" size={sizes.iconMedium} color={colors.text.disabled} />
+      ) : (
+        <Text
+          style={[typography.label, seatState === SEAT_STATES.SELECTED && styles.selectedSeatText]}
+        >
+          {seat.seatNumber}
+        </Text>
+      )}
+      {seatState === SEAT_STATES.SELECTED && (
+        <View style={styles.seatCheck}>
+          <Ionicons name="checkmark-circle" size={sizes.iconSmall} color={colors.surface} />
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+/**
+ * Seat map screen. With a ticketId it changes that ticket's seats; otherwise it creates the ticket.
  * @returns {import('react').JSX.Element} The screen.
  */
 export default function SeatSelectionScreen() {
   const router = useRouter();
   const { tripId, boardingStopId, alightingStopId, ticketId } = useLocalSearchParams();
-  const { showSuccessToast, showErrorToast } = useToast();
+  const { showErrorToast, showSuccessToast } = useToast();
 
   const [seatMap, setSeatMap] = useState(null);
-  const [chosenSeatNumber, setChosenSeatNumber] = useState('');
+  const [chosenSeatNumbers, setChosenSeatNumbers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
   const [reloadCounter, setReloadCounter] = useState(0);
 
   const reloadSeatMap = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
-  const isChangingSeat = Boolean(ticketId);
+  const isChangingSeats = Boolean(ticketId);
 
   useEffect(() => {
     let isEffectActive = true;
@@ -82,15 +128,33 @@ export default function SeatSelectionScreen() {
   }, [tripId, reloadCounter]);
 
   /**
+   * Adds or removes a seat from the selection, keeping it in map order.
+   * @param {string} seatNumber - Seat that was tapped.
+   * @returns {void}
+   */
+  function toggleSeat(seatNumber) {
+    setChosenSeatNumbers((previousSeats) => {
+      if (previousSeats.includes(seatNumber)) {
+        return previousSeats.filter((previousSeat) => previousSeat !== seatNumber);
+      }
+      if (previousSeats.length >= seatMap.maxSeatsPerTicket) {
+        showErrorToast(`One ticket can hold at most ${seatMap.maxSeatsPerTicket} seats.`);
+        return previousSeats;
+      }
+      return [...previousSeats, seatNumber].sort();
+    });
+  }
+
+  /**
    * Books the ticket, or moves the existing ticket, then sends the passenger to the next screen.
    * @returns {Promise<void>} Resolves once the request finishes.
    */
-  async function confirmSeat() {
+  async function confirmSeats() {
     setIsConfirming(true);
     try {
-      if (isChangingSeat) {
-        await updateTicket(ticketId, { seatNumber: chosenSeatNumber });
-        showSuccessToast(`Moved to seat ${chosenSeatNumber}.`);
+      if (isChangingSeats) {
+        await updateTicket(ticketId, { seatNumbers: chosenSeatNumbers });
+        showSuccessToast(`Moved to ${chosenSeatNumbers.join(', ')}.`);
         router.replace(`/(passenger)/ticket/${ticketId}`);
         return;
       }
@@ -98,14 +162,14 @@ export default function SeatSelectionScreen() {
         tripId,
         boardingStopId,
         alightingStopId,
-        seatNumber: chosenSeatNumber,
+        seatNumbers: chosenSeatNumbers,
       });
       router.replace(`/(passenger)/payment/${ticketView.ticket.id}`);
     } catch (confirmError) {
       showErrorToast(confirmError.message);
-      // The seat may have been taken while the passenger was deciding, so show the current map.
+      // A seat may have been taken while the passenger was deciding, so show the current map.
       reloadSeatMap();
-      setChosenSeatNumber('');
+      setChosenSeatNumbers([]);
     } finally {
       setIsConfirming(false);
     }
@@ -114,7 +178,7 @@ export default function SeatSelectionScreen() {
   const screenHeader = (
     <AppHeader
       variant="back"
-      title={isChangingSeat ? 'Change Seat' : 'Choose a Seat'}
+      title={isChangingSeats ? 'Change Seats' : 'Select Seats'}
       onBackPress={router.canGoBack() ? router.back : undefined}
     />
   );
@@ -133,14 +197,14 @@ export default function SeatSelectionScreen() {
       </ScreenContainer>
     );
   }
-  if (seatMap.availableCount === 0) {
+  if (seatMap.availableCount === 0 && !isChangingSeats) {
     return (
       <ScreenContainer header={screenHeader}>
         <EmptyState
           iconName="bus-outline"
           title={SEAT_MESSAGES.fullBus}
           message="Try the next bus on this route, or track this one and board later."
-          actionLabel="Back to the route"
+          actionLabel="Back to the bus"
           onActionPress={router.back}
         />
       </ScreenContainer>
@@ -148,81 +212,123 @@ export default function SeatSelectionScreen() {
   }
 
   const seatRows = groupSeatsIntoRows(seatMap.seats, seatMap.seatsPerRow);
+  const perSeatFare = seatMap.route?.baseFare || 0;
+  const totalFare = perSeatFare * chosenSeatNumbers.length;
+  const halfRow = seatMap.seatsPerRow / 2;
 
   return (
-    <ScreenContainer isScrollable header={screenHeader}>
+    <ScreenContainer
+      isScrollable
+      header={screenHeader}
+      footer={
+        <View style={styles.summaryBar}>
+          <View style={styles.summaryTextBlock}>
+            <Text style={typography.bodyLarge}>{describeSeatCount(chosenSeatNumbers)}</Text>
+            <Text style={[typography.caption, styles.mutedText]}>
+              {chosenSeatNumbers.length > 0
+                ? `Seats ${chosenSeatNumbers.join(', ')}`
+                : SEAT_MESSAGES.chooseSeat}
+            </Text>
+          </View>
+          <View style={styles.summaryTotalBlock}>
+            <Text style={[typography.caption, styles.mutedText]}>Total</Text>
+            <Text style={typography.heading3}>
+              {CURRENCY_PREFIX} {totalFare}
+            </Text>
+          </View>
+        </View>
+      }
+    >
       <AppCard>
-        <Text style={typography.heading3}>{seatMap.bus.plateNumber}</Text>
-        <Text style={[typography.bodySmall, styles.mutedText]}>
-          {seatMap.bus.busName} · {seatMap.availableCount} of {seatMap.bus.capacity} seats free
-        </Text>
+        <View style={styles.busRow}>
+          <View style={styles.busBadge}>
+            <Ionicons name="bus" size={sizes.iconMedium} color={colors.primary[600]} />
+          </View>
+          <View style={styles.busTextBlock}>
+            <Text style={typography.heading3}>{seatMap.bus.plateNumber}</Text>
+            <Text style={[typography.bodySmall, styles.mutedText]}>
+              {seatMap.route?.origin} &#8594; {seatMap.route?.destination}
+            </Text>
+            <Text style={[typography.caption, styles.mutedText]}>
+              {formatDepartureTime(seatMap.departsAt)}
+            </Text>
+          </View>
+          <View style={styles.farePerSeatBlock}>
+            <Text style={typography.heading3}>
+              {CURRENCY_PREFIX} {perSeatFare}
+            </Text>
+            <Text style={[typography.caption, styles.mutedText]}>per seat</Text>
+          </View>
+        </View>
       </AppCard>
 
       <View style={styles.legendRow}>
         {SEAT_LEGEND.map((legendEntry) => (
           <View key={legendEntry.state} style={styles.legendEntry}>
-            <View style={[styles.legendSwatch, styles[`seat_${legendEntry.state}`]]} />
-            <Text style={[typography.caption, styles.mutedText]}>{legendEntry.label}</Text>
+            <View style={[styles.legendSwatch, styles[`seat_${legendEntry.state}`]]}>
+              <Ionicons
+                name={legendEntry.iconName}
+                size={sizes.iconSmall}
+                color={
+                  legendEntry.state === SEAT_STATES.SELECTED
+                    ? colors.surface
+                    : legendEntry.state === SEAT_STATES.BOOKED
+                      ? colors.text.disabled
+                      : colors.text.secondary
+                }
+              />
+            </View>
+            <Text style={[typography.bodySmall, styles.mutedText]}>{legendEntry.label}</Text>
           </View>
         ))}
       </View>
 
       <AppCard>
-        <View style={styles.frontMarker}>
-          <Ionicons name="arrow-up-circle-outline" size={sizes.iconMedium} color={colors.text.secondary} />
-          <Text style={[typography.caption, styles.mutedText]}>Front of the bus</Text>
+        <View style={styles.frontRow}>
+          <Text style={[typography.caption, styles.mutedText]}>{SEAT_MESSAGES.frontOfBus}</Text>
+          <View style={styles.driverBlock}>
+            <Text style={[typography.caption, styles.mutedText]}>{SEAT_MESSAGES.driver}</Text>
+            <Ionicons
+              name="person-circle-outline"
+              size={sizes.iconLarge}
+              color={colors.text.secondary}
+            />
+          </View>
         </View>
 
-        {seatRows.map((seatRow) => (
+        {seatRows.map((seatRow, rowIndex) => (
           <View key={seatRow[0].seatNumber} style={styles.seatRow}>
-            {seatRow.map((seat, seatIndexInRow) => {
-              const seatState = resolveSeatState(seat, chosenSeatNumber);
-              return (
-                <View key={seat.seatNumber} style={styles.seatSlot}>
-                  {/* The aisle sits between the second and third seat of every row. */}
-                  {seatIndexInRow === seatMap.seatsPerRow / 2 && <View style={styles.aisle} />}
-                  <Pressable
-                    onPress={() => setChosenSeatNumber(seat.seatNumber)}
-                    disabled={seat.isBooked}
-                    accessibilityRole="button"
-                    accessibilityState={{
-                      disabled: seat.isBooked,
-                      selected: seatState === SEAT_STATES.SELECTED,
-                    }}
-                    accessibilityLabel={`Seat ${seat.seatNumber}, ${
-                      SEAT_LEGEND.find((legendEntry) => legendEntry.state === seatState).label
-                    }`}
-                    style={[styles.seatSquare, styles[`seat_${seatState}`]]}
-                  >
-                    <Text
-                      style={[
-                        typography.label,
-                        seatState === SEAT_STATES.SELECTED && styles.selectedSeatText,
-                        seatState === SEAT_STATES.BOOKED && styles.bookedSeatText,
-                      ]}
-                    >
-                      {seat.seatNumber}
-                    </Text>
-                  </Pressable>
-                </View>
-              );
-            })}
+            {seatRow.slice(0, halfRow).map((seat) => (
+              <SeatSquare
+                key={seat.seatNumber}
+                seat={seat}
+                seatState={resolveSeatState(seat, chosenSeatNumbers)}
+                onPress={() => toggleSeat(seat.seatNumber)}
+              />
+            ))}
+            {/* The aisle carries the row number, exactly as a conductor reads the bus. */}
+            <View style={styles.aisle}>
+              <Text style={[typography.caption, styles.mutedText]}>{rowIndex + 1}</Text>
+            </View>
+            {seatRow.slice(halfRow).map((seat) => (
+              <SeatSquare
+                key={seat.seatNumber}
+                seat={seat}
+                seatState={resolveSeatState(seat, chosenSeatNumbers)}
+                onPress={() => toggleSeat(seat.seatNumber)}
+              />
+            ))}
           </View>
         ))}
       </AppCard>
 
-      <Text style={[typography.bodySmall, styles.mutedText]}>
-        {chosenSeatNumber ? `Seat ${chosenSeatNumber} selected.` : SEAT_MESSAGES.chooseSeat}
-      </Text>
-
       <AppButton
-        label={isChangingSeat ? 'Move to this seat' : 'Confirm and pay'}
+        label={isChangingSeats ? 'Move to these seats' : 'Continue'}
         size="large"
         isFullWidth
-        iconName="arrow-forward"
         isLoading={isConfirming}
-        isDisabled={!chosenSeatNumber}
-        onPress={confirmSeat}
+        isDisabled={chosenSeatNumbers.length === 0}
+        onPress={confirmSeats}
       />
     </ScreenContainer>
   );
@@ -231,6 +337,26 @@ export default function SeatSelectionScreen() {
 const styles = StyleSheet.create({
   mutedText: {
     color: colors.text.secondary,
+  },
+  busRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  busBadge: {
+    width: sizes.avatar,
+    height: sizes.avatar,
+    borderRadius: radii.md,
+    backgroundColor: colors.primary[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  busTextBlock: {
+    flex: 1,
+    gap: spacing.xxs,
+  },
+  farePerSeatBlock: {
+    alignItems: 'flex-end',
   },
   legendRow: {
     flexDirection: 'row',
@@ -243,31 +369,37 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   legendSwatch: {
-    width: sizes.iconMedium,
-    height: sizes.iconMedium,
+    width: sizes.iconXLarge,
+    height: sizes.iconXLarge,
     borderRadius: radii.sm,
-  },
-  frontMarker: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    borderWidth: sizes.borderThin,
+  },
+  frontRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingBottom: spacing.md,
     marginBottom: spacing.md,
     borderBottomWidth: sizes.borderThin,
     borderBottomColor: colors.border,
   },
+  driverBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   seatRow: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: spacing.sm,
   },
-  seatSlot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   aisle: {
-    width: spacing.xxl,
+    width: AISLE_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   seatSquare: {
     width: SEAT_SQUARE_SIZE,
@@ -278,9 +410,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: sizes.borderThin,
   },
+  seatCheck: {
+    position: 'absolute',
+    top: spacing.xxs,
+    right: spacing.xxs,
+  },
   seat_available: {
     backgroundColor: colors.surface,
-    borderColor: colors.primary[500],
+    borderColor: colors.border,
   },
   seat_selected: {
     backgroundColor: colors.primary[600],
@@ -293,7 +430,21 @@ const styles = StyleSheet.create({
   selectedSeatText: {
     color: colors.text.onColor,
   },
-  bookedSeatText: {
-    color: colors.text.disabled,
+  summaryBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: sizes.screenGutter,
+    paddingVertical: spacing.md,
+    borderTopWidth: sizes.borderThin,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  summaryTextBlock: {
+    flex: 1,
+    gap: spacing.xxs,
+  },
+  summaryTotalBlock: {
+    alignItems: 'flex-end',
   },
 });

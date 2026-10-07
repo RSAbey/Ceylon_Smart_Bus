@@ -1,5 +1,6 @@
-// Ticket Details (Member 03, FR-05): the QR code the driver scans, the journey, and cancel / edit.
-// The QR is drawn from fields already in memory, so it still shows with no connection (NFR-04).
+// My Ticket (Member 03, FR-05): the QR code the conductor scans, the journey, and cancel / change.
+// A copy is kept on the phone, so the ticket still opens out of coverage, which is exactly where
+// buses are when the conductor asks to see it (NFR-04).
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,22 +17,23 @@ import ErrorState from '../../../components/feedback/ErrorState';
 import { useToast } from '../../../components/ui/ToastMessage';
 import { colors, radii, sizes, spacing, typography } from '../../../theme';
 import { cancelTicket, fetchTicketDetails } from '../services/ticketApi';
+import { cacheTicket, forgetCachedTicket, readCachedTicket } from '../services/offlineTicketStore';
+import { formatDepartureTime, formatFare, formatSyncTime, formatValidUntil } from '../formatters';
 import { QR_PAYLOAD_TYPE } from '../../verification/constants';
-import { CURRENCY_PREFIX, QR_CODE_SIZE, TICKET_BADGES, TICKET_STATUSES, UNPAID_BADGE } from '../constants';
+import { OFFLINE_PILL, QR_CODE_SIZE, TICKET_BADGES, TICKET_STATUSES, UNPAID_BADGE } from '../constants';
 
 /**
- * One labelled line in the journey block.
+ * One label-and-value pair in the ticket stub.
  * @param {object} props - Component props.
- * @param {string} props.iconName - Ionicons name.
  * @param {string} props.label - What the value means.
  * @param {string} props.detail - The value itself.
- * @returns {import('react').JSX.Element} The row.
+ * @param {boolean} [props.isAlignedRight] - Right-align for the second column.
+ * @returns {import('react').JSX.Element} The pair.
  */
-function JourneyRow({ iconName, label, detail }) {
+function StubField({ label, detail, isAlignedRight = false }) {
   return (
-    <View style={styles.journeyRow}>
-      <Ionicons name={iconName} size={sizes.iconMedium} color={colors.text.secondary} />
-      <Text style={[typography.bodyMedium, styles.journeyLabel]}>{label}</Text>
+    <View style={[styles.stubField, isAlignedRight && styles.stubFieldRight]}>
+      <Text style={[typography.caption, styles.mutedText]}>{label}</Text>
       <Text style={typography.bodyLarge}>{detail}</Text>
     </View>
   );
@@ -47,6 +49,8 @@ export default function TicketDetailsScreen() {
   const { showSuccessToast, showErrorToast } = useToast();
 
   const [ticketView, setTicketView] = useState(null);
+  const [syncedAt, setSyncedAt] = useState(null);
+  const [isShowingCachedCopy, setIsShowingCachedCopy] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [isCancelDialogVisible, setIsCancelDialogVisible] = useState(false);
@@ -55,19 +59,32 @@ export default function TicketDetailsScreen() {
 
   const reloadTicket = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
 
-  // Paying and editing happen on other screens, so refresh whenever this screen comes back into view.
+  // Paying and changing happen on other screens, so refresh whenever this screen comes back into view.
   useFocusEffect(reloadTicket);
 
   useEffect(() => {
     let isEffectActive = true;
     fetchTicketDetails(ticketId)
-      .then((loadedTicket) => {
+      .then(async (loadedTicket) => {
         if (!isEffectActive) return;
         setTicketView(loadedTicket);
+        setSyncedAt(new Date().toISOString());
+        setIsShowingCachedCopy(false);
         setLoadErrorMessage('');
+        await cacheTicket(ticketId, loadedTicket);
       })
-      .catch((loadError) => {
-        if (isEffectActive) setLoadErrorMessage(loadError.message);
+      .catch(async (loadError) => {
+        // No signal is the normal case on a moving bus, so fall back to the stored copy.
+        const cachedTicket = await readCachedTicket(ticketId);
+        if (!isEffectActive) return;
+        if (cachedTicket) {
+          setTicketView(cachedTicket.ticketView);
+          setSyncedAt(cachedTicket.syncedAt);
+          setIsShowingCachedCopy(true);
+          setLoadErrorMessage('');
+        } else {
+          setLoadErrorMessage(loadError.message);
+        }
       })
       .finally(() => {
         if (isEffectActive) setIsLoading(false);
@@ -81,7 +98,8 @@ export default function TicketDetailsScreen() {
     setIsCancelling(true);
     try {
       await cancelTicket(ticketId);
-      showSuccessToast('Ticket cancelled. Your seat has been released.');
+      await forgetCachedTicket(ticketId);
+      showSuccessToast('Ticket cancelled. Your seats have been released.');
       setIsCancelDialogVisible(false);
       reloadTicket();
     } catch (cancelError) {
@@ -94,7 +112,7 @@ export default function TicketDetailsScreen() {
   const screenHeader = (
     <AppHeader
       variant="back"
-      title="Ticket"
+      title="My Ticket"
       onBackPress={router.canGoBack() ? router.back : undefined}
     />
   );
@@ -114,9 +132,12 @@ export default function TicketDetailsScreen() {
     );
   }
 
-  const { ticket, route, bus, boardingStop, alightingStop, seatNumber, isPaid } = ticketView;
+  const { ticket, route, boardingStop, alightingStop, seatNumbers, isPaid, passengerName, departsAt } =
+    ticketView;
   const ticketBadge = TICKET_BADGES[ticket.status];
   const isActiveTicket = ticket.status === TICKET_STATUSES.ACTIVE;
+  const isQrUsable = isPaid && isActiveTicket;
+  const offlineWording = isShowingCachedCopy ? OFFLINE_PILL.offline : OFFLINE_PILL.online;
   // The driver's app reads this exact shape; anything else is rejected as not a ticket.
   const qrPayload = JSON.stringify({
     type: QR_PAYLOAD_TYPE,
@@ -127,27 +148,45 @@ export default function TicketDetailsScreen() {
   return (
     <ScreenContainer isScrollable header={screenHeader}>
       <AppCard>
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.cardHeaderText}>
-            <Text style={typography.heading2}>Route {route?.routeNumber}</Text>
-            <Text style={[typography.bodySmall, styles.mutedText]}>{ticket.ticketKey}</Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brandBadge}>
+            <Ionicons name="bus" size={sizes.iconMedium} color={colors.text.onColor} />
           </View>
+          <Text style={[typography.bodyMedium, styles.brandText]}>Ceylon Smart Bus</Text>
           <StatusBadge status={ticketBadge.status} label={ticketBadge.label} />
         </View>
 
-        {isPaid && isActiveTicket ? (
+        <Text style={[typography.display, styles.busNumberText]}>
+          Bus {route?.routeNumber || '--'}
+        </Text>
+        <Text style={[typography.bodyLarge, styles.mutedText]}>
+          {boardingStop?.stopName} &#8594; {alightingStop?.stopName}
+        </Text>
+
+        {isQrUsable ? (
           <View style={styles.qrBlock}>
-            <QRCode
-              value={qrPayload}
-              size={QR_CODE_SIZE}
-              color={colors.text.primary}
-              backgroundColor={colors.surface}
-            />
-            <Text style={[typography.bodySmall, styles.qrCaption]}>
-              Show this to the driver when you board.
-            </Text>
-            <Text style={[typography.caption, styles.mutedText]}>
-              Code not scanning? The driver can type {ticket.ticketKey}.
+            <View style={styles.qrFrame}>
+              <QRCode
+                value={qrPayload}
+                size={QR_CODE_SIZE}
+                color={colors.text.primary}
+                backgroundColor={colors.surface}
+              />
+            </View>
+            <View style={styles.offlinePill}>
+              <Ionicons
+                name={isShowingCachedCopy ? 'cloud-offline-outline' : 'cloud-done-outline'}
+                size={sizes.iconSmall}
+                color={colors.primary[600]}
+              />
+              <Text style={[typography.bodySmall, styles.offlinePillText]}>
+                {offlineWording.label}
+              </Text>
+            </View>
+            <Text style={[typography.caption, styles.qrCaption]}>
+              {isShowingCachedCopy
+                ? `Last synced ${formatSyncTime(syncedAt)}. ${offlineWording.caption}`
+                : offlineWording.caption}
             </Text>
           </View>
         ) : (
@@ -164,19 +203,36 @@ export default function TicketDetailsScreen() {
             </Text>
           </View>
         )}
-      </AppCard>
 
-      <AppCard>
-        <Text style={[typography.sectionHeading, styles.mutedText]}>Your journey</Text>
-        <JourneyRow iconName="radio-button-on-outline" label="From" detail={boardingStop?.stopName} />
-        <JourneyRow iconName="location-outline" label="To" detail={alightingStop?.stopName} />
-        <JourneyRow iconName="person-outline" label="Seat" detail={seatNumber || 'Released'} />
-        <JourneyRow iconName="bus-outline" label="Bus" detail={bus?.plateNumber || 'Not assigned'} />
-        <JourneyRow
-          iconName="cash-outline"
-          label="Fare"
-          detail={`${CURRENCY_PREFIX} ${ticket.fareAmount}`}
-        />
+        <View style={styles.dashedDivider} />
+
+        <View style={styles.stubRow}>
+          <StubField label="Passenger" detail={passengerName || 'You'} />
+          <StubField
+            label={seatNumbers.length === 1 ? 'Seat' : 'Seats'}
+            detail={seatNumbers.length > 0 ? seatNumbers.join(', ') : 'Released'}
+            isAlignedRight
+          />
+        </View>
+        <View style={styles.stubRow}>
+          <StubField label="Departs" detail={formatDepartureTime(departsAt)} />
+          <StubField label="Fare" detail={formatFare(ticket.fareAmount)} isAlignedRight />
+        </View>
+
+        <View style={[styles.validUntilRow, !isQrUsable && styles.validUntilRowMuted]}>
+          <Ionicons
+            name="time-outline"
+            size={sizes.iconMedium}
+            color={isQrUsable ? colors.success.dark : colors.text.secondary}
+          />
+          <Text style={[typography.bodyMedium, styles.validUntilLabel]}>Valid until</Text>
+          <Text style={typography.bodyMedium}>{formatValidUntil(ticket.validUntil)}</Text>
+        </View>
+
+        <View style={styles.stubRow}>
+          <Text style={[typography.bodyMedium, styles.mutedText]}>Ticket ID</Text>
+          <Text style={typography.bodyMedium}>{ticket.ticketKey}</Text>
+        </View>
       </AppCard>
 
       {isActiveTicket && !isPaid && (
@@ -192,7 +248,7 @@ export default function TicketDetailsScreen() {
         </View>
       )}
 
-      {isActiveTicket && (
+      {isActiveTicket && !isShowingCachedCopy && (
         <View style={styles.actionRow}>
           <AppButton
             label="Change"
@@ -218,8 +274,8 @@ export default function TicketDetailsScreen() {
         title="Cancel this ticket?"
         message={
           isPaid
-            ? 'Your seat is released and the fare is refunded. This cannot be undone.'
-            : 'Your seat is released. This cannot be undone.'
+            ? 'Your seats are released and the fare is refunded. This cannot be undone.'
+            : 'Your seats are released. This cannot be undone.'
         }
         confirmLabel="Cancel ticket"
         cancelLabel="Keep it"
@@ -233,14 +289,26 @@ export default function TicketDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
-  cardHeaderRow: {
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  cardHeaderText: {
+  brandBadge: {
+    width: sizes.iconXLarge,
+    height: sizes.iconXLarge,
+    borderRadius: radii.sm,
+    backgroundColor: colors.primary[600],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandText: {
     flex: 1,
-    gap: spacing.xxs,
+    color: colors.text.secondary,
+  },
+  busNumberText: {
+    marginBottom: spacing.xxs,
   },
   mutedText: {
     color: colors.text.secondary,
@@ -250,6 +318,29 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
+  qrFrame: {
+    padding: spacing.lg,
+    borderRadius: radii.lg,
+    borderWidth: sizes.borderThin,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  offlinePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary[100],
+  },
+  offlinePillText: {
+    color: colors.primary[600],
+  },
+  qrCaption: {
+    textAlign: 'center',
+    color: colors.text.secondary,
+  },
   qrPlaceholder: {
     alignItems: 'center',
     gap: spacing.sm,
@@ -258,16 +349,37 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     backgroundColor: colors.background,
   },
-  qrCaption: {
-    textAlign: 'center',
+  dashedDivider: {
+    marginVertical: spacing.lg,
+    borderBottomWidth: sizes.borderThin,
+    borderBottomColor: colors.border,
+    borderStyle: 'dashed',
   },
-  journeyRow: {
+  stubRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  stubField: {
+    gap: spacing.xxs,
+  },
+  stubFieldRight: {
+    alignItems: 'flex-end',
+  },
+  validUntilRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+    borderRadius: radii.md,
+    backgroundColor: colors.success.light,
   },
-  journeyLabel: {
+  validUntilRowMuted: {
+    backgroundColor: colors.background,
+  },
+  validUntilLabel: {
     flex: 1,
     color: colors.text.secondary,
   },

@@ -54,10 +54,10 @@ async function recordVerification({
  * @returns {Promise<object>} Summary for the driver's screen.
  */
 async function buildDriverTicketSummary(ticket) {
-  const [boardingStop, alightingStop, seatBooking, passengerTicket] = await Promise.all([
+  const [boardingStop, alightingStop, seatNumbers, passengerTicket] = await Promise.all([
     RouteStop.findById(ticket.boardingStopId),
     RouteStop.findById(ticket.alightingStopId),
-    seatService.getSeatForTicket(ticket.id),
+    seatService.getSeatsForTicket(ticket.id),
     Ticket.findById(ticket.id).populate('userId', 'fullName'),
   ]);
 
@@ -67,7 +67,7 @@ async function buildDriverTicketSummary(ticket) {
     passengerName: passengerTicket?.userId?.fullName || null,
     boardingStopName: boardingStop?.stopName || null,
     alightingStopName: alightingStop?.stopName || null,
-    seatNumber: seatBooking?.seatNumber || null,
+    seatNumbers,
     fareAmount: ticket.fareAmount,
     status: ticket.status,
   };

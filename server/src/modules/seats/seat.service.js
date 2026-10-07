@@ -1,4 +1,5 @@
-// Seat business logic (Member 03): builds the seat map for a trip and holds or releases one seat per ticket.
+// Seat business logic (Member 03): builds the seat map for a trip and holds or releases the seats a
+// ticket owns. One ticket may hold several seats, so a family travels on one ticket and one fare.
 const SeatBooking = require('./seatBooking.model');
 const Trip = require('../trips/trip.model');
 const {
@@ -6,6 +7,7 @@ const {
   SEATS_PER_ROW,
   SEAT_COLUMN_LABELS,
   FIRST_ROW_NUMBER,
+  MAX_SEATS_PER_TICKET,
 } = require('./seat.constants');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
@@ -27,12 +29,12 @@ function buildSeatLabels(capacity) {
 }
 
 /**
- * Loads a trip that is still running, because seats can only be chosen on a bus in service.
+ * Loads a trip that can still be booked, because seats are only sold on a bus in service.
  * @param {string} tripId - Trip the passenger is booking on.
- * @returns {Promise<object>} The trip with its bus populated.
+ * @returns {Promise<object>} The trip with its bus and route populated.
  */
 async function getTripForBooking(tripId) {
-  const matchingTrip = await Trip.findById(tripId).populate('busId');
+  const matchingTrip = await Trip.findById(tripId).populate(['busId', 'routeId']);
   if (!matchingTrip) {
     throw new AppError('Trip not found.', HTTP_STATUS.NOT_FOUND);
   }
@@ -43,9 +45,9 @@ async function getTripForBooking(tripId) {
 }
 
 /**
- * The seat map one trip: every seat label with whether it is already taken (FR-06).
+ * The seat map for one trip: every seat label with whether it is already taken (FR-06).
  * @param {string} tripId - Trip to show.
- * @returns {Promise<object>} Bus details, seat rows and the booked count.
+ * @returns {Promise<object>} Bus and route details, seat rows and the free/taken counts.
  */
 async function getSeatMap(tripId) {
   const matchingTrip = await getTripForBooking(tripId);
@@ -67,75 +69,115 @@ async function getSeatMap(tripId) {
       busName: matchingTrip.busId.busName,
       capacity: matchingTrip.busId.capacity,
     },
+    route: matchingTrip.routeId,
+    departsAt: matchingTrip.startedAt,
     seats,
     seatsPerRow: SEATS_PER_ROW,
+    maxSeatsPerTicket: MAX_SEATS_PER_TICKET,
     bookedCount: bookedSeatNumbers.length,
     availableCount: seats.length - bookedSeatNumbers.length,
   };
 }
 
 /**
- * Checks a seat exists on the bus and is free, raising a clear message when it is not.
+ * Checks a set of seats exists on the bus and is free, raising a clear message when it is not.
  * @param {string} tripId - Trip being booked.
- * @param {string} seatNumber - Seat the passenger tapped.
- * @returns {Promise<void>} Resolves when the seat can be booked.
+ * @param {string[]} seatNumbers - Seats the passenger tapped.
+ * @param {string} [ignoreTicketId] - Ticket whose own seats do not count as taken (used when editing).
+ * @returns {Promise<void>} Resolves when every seat can be booked.
  */
-async function assertSeatIsAvailable(tripId, seatNumber) {
+async function assertSeatsAreAvailable(tripId, seatNumbers, ignoreTicketId) {
+  if (!Array.isArray(seatNumbers) || seatNumbers.length === 0) {
+    throw new AppError('Choose at least one seat.', HTTP_STATUS.UNPROCESSABLE_ENTITY, [
+      { field: 'seatNumbers', message: 'Choose a seat from the seat map.' },
+    ]);
+  }
+  if (seatNumbers.length > MAX_SEATS_PER_TICKET) {
+    throw new AppError(
+      `One ticket can hold at most ${MAX_SEATS_PER_TICKET} seats.`,
+      HTTP_STATUS.UNPROCESSABLE_ENTITY,
+      [{ field: 'seatNumbers', message: `Choose up to ${MAX_SEATS_PER_TICKET} seats.` }]
+    );
+  }
+  if (new Set(seatNumbers).size !== seatNumbers.length) {
+    throw new AppError('The same seat was chosen twice.', HTTP_STATUS.UNPROCESSABLE_ENTITY, [
+      { field: 'seatNumbers', message: 'Choose different seats.' },
+    ]);
+  }
+
   const matchingTrip = await getTripForBooking(tripId);
   const seatLabels = buildSeatLabels(matchingTrip.busId.capacity);
-  if (!seatLabels.includes(seatNumber)) {
-    throw new AppError(`Seat ${seatNumber} does not exist on this bus.`, HTTP_STATUS.UNPROCESSABLE_ENTITY, [
-      { field: 'seatNumber', message: 'Choose a seat from the seat map.' },
-    ]);
+  const unknownSeat = seatNumbers.find((seatNumber) => !seatLabels.includes(seatNumber));
+  if (unknownSeat) {
+    throw new AppError(
+      `Seat ${unknownSeat} does not exist on this bus.`,
+      HTTP_STATUS.UNPROCESSABLE_ENTITY,
+      [{ field: 'seatNumbers', message: 'Choose seats from the seat map.' }]
+    );
   }
-  const takenSeat = await SeatBooking.findOne({
+
+  const takenFilter = {
     tripId,
-    seatNumber,
+    seatNumber: { $in: seatNumbers },
     status: SEAT_BOOKING_STATUSES.BOOKED,
-  });
+  };
+  if (ignoreTicketId) takenFilter.ticketId = { $ne: ignoreTicketId };
+  const takenSeat = await SeatBooking.findOne(takenFilter);
   if (takenSeat) {
-    throw new AppError(`Seat ${seatNumber} has just been taken. Please pick another.`, HTTP_STATUS.CONFLICT, [
-      { field: 'seatNumber', message: 'This seat is no longer free.' },
-    ]);
+    throw new AppError(
+      `Seat ${takenSeat.seatNumber} has just been taken. Please pick another.`,
+      HTTP_STATUS.CONFLICT,
+      [{ field: 'seatNumbers', message: 'One of those seats is no longer free.' }]
+    );
   }
 }
 
 /**
- * Holds one seat for a ticket. The partial unique index is the real guard against two
- * passengers booking the same seat at the same moment.
- * @param {object} bookingDetails - Which seat on which trip for which ticket.
+ * Holds the seats for a ticket. The partial unique index is the real guard against two passengers
+ * booking the same seat at the same moment.
+ * @param {object} bookingDetails - Which seats on which trip for which ticket.
  * @param {string} bookingDetails.tripId - Trip being booked.
- * @param {string} bookingDetails.ticketId - Ticket that owns the seat.
- * @param {string} bookingDetails.seatNumber - Seat label.
- * @returns {Promise<object>} The stored booking.
+ * @param {string} bookingDetails.ticketId - Ticket that owns the seats.
+ * @param {string[]} bookingDetails.seatNumbers - Seat labels.
+ * @returns {Promise<object[]>} The stored bookings.
  */
-async function bookSeatForTicket({ tripId, ticketId, seatNumber }) {
-  await assertSeatIsAvailable(tripId, seatNumber);
+async function bookSeatsForTicket({ tripId, ticketId, seatNumbers }) {
+  await assertSeatsAreAvailable(tripId, seatNumbers, ticketId);
   try {
-    return await SeatBooking.create({ tripId, ticketId, seatNumber });
+    return await SeatBooking.insertMany(
+      seatNumbers.map((seatNumber) => ({ tripId, ticketId, seatNumber }))
+    );
   } catch {
-    // The unique index rejected it, which means another passenger won the race by milliseconds.
-    throw new AppError(`Seat ${seatNumber} has just been taken. Please pick another.`, HTTP_STATUS.CONFLICT, [
-      { field: 'seatNumber', message: 'This seat is no longer free.' },
-    ]);
+    // The unique index rejected one of them, so another passenger won the race by milliseconds.
+    // Any seats that did get in are rolled back, so the ticket never holds a partial set.
+    await SeatBooking.deleteMany({ ticketId });
+    throw new AppError(
+      'One of those seats has just been taken. Please pick again.',
+      HTTP_STATUS.CONFLICT,
+      [{ field: 'seatNumbers', message: 'One of those seats is no longer free.' }]
+    );
   }
 }
 
 /**
- * The seat a ticket holds, so the ticket screens can print "Seat 12A".
+ * The seats a ticket holds, so the ticket screens can print "Seats 4C, 4D".
  * @param {string} ticketId - Ticket to look up.
- * @returns {Promise<object | null>} The booking, or null when the seat was released.
+ * @returns {Promise<string[]>} Seat labels in map order, empty once released.
  */
-async function getSeatForTicket(ticketId) {
-  return SeatBooking.findOne({ ticketId, status: SEAT_BOOKING_STATUSES.BOOKED });
+async function getSeatsForTicket(ticketId) {
+  const bookings = await SeatBooking.find({
+    ticketId,
+    status: SEAT_BOOKING_STATUSES.BOOKED,
+  }).sort({ seatNumber: 1 });
+  return bookings.map((booking) => booking.seatNumber);
 }
 
 /**
- * Frees the seat a ticket held, which is what makes a cancelled ticket's seat bookable again.
- * @param {string} ticketId - Ticket being cancelled or changed.
- * @returns {Promise<void>} Resolves once the seat is released.
+ * Frees the seats a ticket held, which is what makes a cancelled ticket's seats bookable again.
+ * @param {string} ticketId - Ticket being cancelled.
+ * @returns {Promise<void>} Resolves once the seats are released.
  */
-async function releaseSeatForTicket(ticketId) {
+async function releaseSeatsForTicket(ticketId) {
   await SeatBooking.updateMany(
     { ticketId, status: SEAT_BOOKING_STATUSES.BOOKED },
     { status: SEAT_BOOKING_STATUSES.RELEASED }
@@ -143,21 +185,18 @@ async function releaseSeatForTicket(ticketId) {
 }
 
 /**
- * Moves a ticket to a different seat: the old seat is released first so the swap cannot
- * leave the passenger holding two seats.
- * @param {object} changeDetails - Which ticket moves to which seat.
+ * Moves a ticket to a different set of seats. The old rows go first so the swap cannot leave the
+ * passenger holding both sets.
+ * @param {object} changeDetails - Which ticket moves to which seats.
  * @param {string} changeDetails.tripId - Trip being booked.
- * @param {string} changeDetails.ticketId - Ticket that owns the seat.
- * @param {string} changeDetails.seatNumber - New seat label.
- * @returns {Promise<object>} The new booking.
+ * @param {string} changeDetails.ticketId - Ticket that owns the seats.
+ * @param {string[]} changeDetails.seatNumbers - New seat labels.
+ * @returns {Promise<object[]>} The new bookings.
  */
-async function changeSeatForTicket({ tripId, ticketId, seatNumber }) {
-  const currentBooking = await getSeatForTicket(ticketId);
-  if (currentBooking?.seatNumber === seatNumber) return currentBooking;
-
-  await assertSeatIsAvailable(tripId, seatNumber);
+async function changeSeatsForTicket({ tripId, ticketId, seatNumbers }) {
+  await assertSeatsAreAvailable(tripId, seatNumbers, ticketId);
   await SeatBooking.deleteMany({ ticketId });
-  return bookSeatForTicket({ tripId, ticketId, seatNumber });
+  return bookSeatsForTicket({ tripId, ticketId, seatNumbers });
 }
 
 /**
@@ -171,9 +210,9 @@ async function countBookedSeats(tripId) {
 
 module.exports = {
   getSeatMap,
-  bookSeatForTicket,
-  getSeatForTicket,
-  releaseSeatForTicket,
-  changeSeatForTicket,
+  bookSeatsForTicket,
+  getSeatsForTicket,
+  releaseSeatsForTicket,
+  changeSeatsForTicket,
   countBookedSeats,
 };

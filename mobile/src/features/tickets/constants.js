@@ -29,12 +29,24 @@ export const UNPAID_BADGE = Object.freeze({ status: 'delayed', label: 'Payment p
 /** Empty-state copy for My Tickets. */
 export const TICKETS_EMPTY = Object.freeze({
   title: 'No tickets yet',
-  message: 'Find a route, pick a seat and your ticket will appear here with its QR code.',
-  actionLabel: 'Find a route',
+  message: 'Pick a bus, choose your seats and your ticket will appear here with its QR code.',
+  actionLabel: 'Buy my ticket',
 });
+
+/** Label on the button that starts a booking, shown on My Tickets. */
+export const BUY_TICKET_LABEL = 'Buy my ticket';
 
 /** Size of the QR code on the ticket details screen, in points. */
 export const QR_CODE_SIZE = 200;
+
+/** Wording on the offline pill, which has two states depending on whether the API answered. */
+export const OFFLINE_PILL = Object.freeze({
+  online: { label: 'Offline Ticket Available', caption: 'Show this code to the conductor when boarding.' },
+  offline: { label: 'Working offline', caption: 'This code works without internet.' },
+});
+
+/** Key prefix for the copy of a ticket kept on the phone so it opens with no connection (NFR-04). */
+export const OFFLINE_TICKET_KEY_PREFIX = 'ceylonSmartBus.ticket.';
 
 /** Currency prefix used on every fare in the app. */
 export const CURRENCY_PREFIX = 'Rs.';

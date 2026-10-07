@@ -16,6 +16,17 @@ async function listMyTickets(request, response) {
 }
 
 /**
+ * GET /api/tickets/available-buses - the buses a passenger can buy a ticket on right now.
+ * @param {import('express').Request} _request - Unused.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function listBookableTrips(_request, response) {
+  const bookableTrips = await ticketService.listBookableTrips();
+  sendResponse(response, 'Buses loaded.', { bookableTrips });
+}
+
+/**
  * GET /api/tickets/:ticketId - one ticket with its stops, seat and payment.
  * @param {import('express').Request} request - Express request.
  * @param {import('express').Response} response - Express response.
@@ -68,6 +79,7 @@ async function cancelTicket(request, response) {
 
 module.exports = {
   listMyTickets: asyncHandler(listMyTickets),
+  listBookableTrips: asyncHandler(listBookableTrips),
   getTicketDetails: asyncHandler(getTicketDetails),
   createTicket: asyncHandler(createTicket),
   updateTicket: asyncHandler(updateTicket),

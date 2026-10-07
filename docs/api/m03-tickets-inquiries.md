@@ -7,10 +7,11 @@ Status: `planned` → `in progress` → `done`.
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
 | GET | `/api/tickets` | passenger | The caller's own tickets, newest first. `?status=active\|used\|cancelled\|expired` filters the tab. | done |
-| POST | `/api/tickets` | passenger | Book a ticket on an ongoing trip. Body `{ tripId, boardingStopId, alightingStopId, seatNumber }`. The server prices the fare and holds the seat; the ticket starts unpaid. | done |
+| GET | `/api/tickets/available-buses` | passenger | Buses in service now with route, departure, fare and free seats. Opened by the "Buy my ticket" button. | done |
+| POST | `/api/tickets` | passenger | Book a ticket on an ongoing trip. Body `{ tripId, boardingStopId, alightingStopId, seatNumbers[] }`. The server prices the fare (segment fare x seats) and holds every seat; the ticket starts unpaid. | done |
 | GET | `/api/tickets/:ticketId` | passenger | One ticket with its route, stops, seat and payment. 403 for another passenger's ticket (NFR-08). | done |
-| PUT | `/api/tickets/:ticketId` | passenger | Change the stops or the seat while the ticket is still `active`. The fare is repriced. | done |
-| DELETE | `/api/tickets/:ticketId` | passenger | Cancel: releases the seat and marks a paid fare `refunded`. A `used` ticket is refused. | done |
+| PUT | `/api/tickets/:ticketId` | passenger | Change the stops or the seats while the ticket is still `active`. The fare is repriced. | done |
+| DELETE | `/api/tickets/:ticketId` | passenger | Cancel: releases every seat and marks a paid fare `refunded`. A wallet-paid fare goes back to the wallet. A `used` ticket is refused. | done |
 
 **Ticket states.** A ticket is created `active` but unpaid; a payment row makes it usable; a driver's successful
 verification moves it to `used`; cancelling moves it to `cancelled`. `expired` is reached by `validUntil` passing.
@@ -18,22 +19,27 @@ verification moves it to `used`; cancelling moves it to `cancelled`. `expired` i
 ## Seats (`/api/seats`)
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
-| GET | `/api/seats/trip/:tripId` | passenger | Seat map for one trip: every label with `isBooked`, plus bus, `seatsPerRow`, free/taken counts. | done |
+| GET | `/api/seats/trip/:tripId` | passenger | Seat map for one trip: every label with `isBooked`, plus bus, route, departure, `seatsPerRow`, `maxSeatsPerTicket` and free/taken counts. | done |
 
 Seats are labelled `1A`–`1D`, `2A`–… four to a row (2 + 2 across the aisle), generated from the bus capacity.
 Booking and releasing are not endpoints: they happen inside ticket create / update / cancel, so a seat can never
-be held without a ticket.
+be held without a ticket. **One ticket may hold up to `MAX_SEATS_PER_TICKET` (6) seats**, so a group travels on one
+ticket and one fare; see `docs/evidence/m03/erd-changes.md`.
 
 ## Payments (`/api/payments`, `/api/admin/finance`)
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
 | GET | `/api/payments/methods` | passenger | The accepted methods with the label and hint shown in the UI. | done |
 | GET | `/api/payments` | passenger | The caller's own payment history. | done |
-| POST | `/api/payments` | passenger | Pay a fare. Body `{ ticketId, method }`. Creates the payment and a `payment` notification. Paying twice returns 409. | done |
+| POST | `/api/payments` | passenger | Pay a fare. Body `{ ticketId, method }`, plus `{ cardNumber, cardHolderName, cardExpiry, cardCvv }` when `method = card`. Creates the payment and a `payment` notification. Paying twice returns 409. | done |
+| GET | `/api/payments/wallet` | passenger | Wallet balance and the last 20 statement lines. | done |
+| POST | `/api/payments/wallet/topup` | passenger | Add money. Body `{ amount }` plus the four card fields. Rs. 100–10 000. | done |
 | GET | `/api/admin/finance` | admin | Totals collected and refunded, totals by method, and the last 20 transactions. | done |
 
-**Payments are mocked.** No gateway is called and no card details are collected or stored anywhere; `method` only
-records what the passenger chose. This is a deliberate prototype limit, recorded in `docs/evidence/m03/deviations.md`.
+**Payments are mocked.** No gateway is called. The demo card fields are checked for shape (16 digits, MM/YY, 3-digit
+CVV) so the checkout behaves like a real one, then **discarded** — `PAYMENT` stores only amount, method, status and
+time. Paying by `wallet` moves real balance before the payment row is written, so a short balance returns 409 and
+leaves the ticket unpaid. Cancelling a wallet-paid ticket returns the fare to the wallet as a `refund` line.
 
 ## Verification (`/api/verification`)
 | Method | Path | Role | Purpose | Status |
@@ -66,6 +72,7 @@ cannot be rewritten underneath the reply.
 
 ## Shared service (not HTTP)
 `ticketService.getActiveTicketHolderIds(tripId)` — **done in foundation**, used by Member 04 for delay notifications.
+`walletService.spendFromWallet` / `refundToWallet` — internal to Member 03; no other member calls them.
 
 ## Services this module consumes
 - `notificationService.createNotification` (Member 04) — on payment and on an admin reply.
