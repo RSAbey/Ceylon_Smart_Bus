@@ -923,3 +923,116 @@ a {
   color: var(--warning-dark);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------------
+   Live Fleet: the latitude/longitude plot of the running buses, and the strip
+   listing trips a driver app left open. Marker shape carries the service state
+   as well as the colour, so the map does not rely on colour alone.
+   --------------------------------------------------------------------------- */
+
+.fleet-map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.fleet-map__canvas {
+  width: 100%;
+  height: auto;
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-background);
+}
+
+.fleet-map__route {
+  fill: none;
+  stroke: var(--primary-300);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.fleet-map__stop {
+  fill: var(--primary-600);
+}
+
+.fleet-map__bus {
+  cursor: pointer;
+}
+
+.fleet-map__bus--onTime {
+  fill: var(--success-main);
+}
+
+.fleet-map__bus--delayed {
+  fill: var(--warning-main);
+}
+
+.fleet-map__bus--disrupted {
+  fill: var(--error-main);
+}
+
+.fleet-map__bus--focused {
+  stroke: var(--primary-600);
+  stroke-width: 3;
+}
+
+.fleet-map__label {
+  fill: var(--text-primary);
+  stroke: none;
+  font-size: 15px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.fleet-map__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-caption);
+}
+
+.fleet-map__legend-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.fleet-map__legend-entry svg {
+  flex-shrink: 0;
+  cursor: default;
+}
+
+.fleet-alert {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: var(--border-thin) solid var(--warning-main);
+  border-radius: var(--radius-lg);
+  background: var(--warning-light);
+  color: var(--warning-dark);
+}
+
+.fleet-alert__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fleet-alert__entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--text-primary);
+}

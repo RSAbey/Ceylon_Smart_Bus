@@ -52,14 +52,25 @@ async function getNearbyBuses(request, response) {
 }
 
 /**
- * GET /api/admin/fleet — every ongoing trip with its latest position, for the admin map.
+ * GET /api/admin/fleet — every running bus with its position, route line and the summary counts.
  * @param {import('express').Request} _request - Unused.
  * @param {import('express').Response} response - Express response.
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function getFleetPositions(_request, response) {
-  const fleet = await trackingService.getFleetPositions();
-  sendResponse(response, 'Fleet loaded.', { fleet });
+  const liveFleet = await trackingService.getFleetPositions();
+  sendResponse(response, 'Fleet loaded.', liveFleet);
+}
+
+/**
+ * POST /api/admin/fleet/:tripId/end — closes a trip the driver app left running.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function endStrandedTrip(request, response) {
+  const closedTrip = await trackingService.endStrandedTrip(request.params.tripId);
+  sendResponse(response, 'Trip closed.', { trip: closedTrip });
 }
 
 module.exports = {
@@ -67,4 +78,5 @@ module.exports = {
   getTripTracking: asyncHandler(getTripTracking),
   getNearbyBuses: asyncHandler(getNearbyBuses),
   getFleetPositions: asyncHandler(getFleetPositions),
+  endStrandedTrip: asyncHandler(endStrandedTrip),
 };

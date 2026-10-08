@@ -11,5 +11,6 @@ const trackingAdminRouter = express.Router();
 trackingAdminRouter.use(authenticateToken, authorizeRoles(USER_ROLES.ADMIN));
 
 trackingAdminRouter.get('/', trackingController.getFleetPositions);
+trackingAdminRouter.post('/:tripId/end', trackingController.endStrandedTrip);
 
 module.exports = trackingAdminRouter;

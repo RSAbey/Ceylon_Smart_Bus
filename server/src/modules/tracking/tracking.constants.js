@@ -23,6 +23,20 @@ const NEARBY_SEARCH_RADIUS_KM = 5;
 
 const MINUTES_PER_HOUR = 60;
 
+const SECONDS_PER_MINUTE = 60;
+
+/**
+ * A trip whose last ping is older than this is treated as stranded: the driver app has almost
+ * certainly been closed without ending the trip, which leaves the bus "running" forever and blocks
+ * the driver from starting their next run. Only a stranded trip may be force-ended by an admin.
+ */
+const STRANDED_TRIP_AFTER_MINUTES = 15;
+
+const STRANDED_TRIP_AFTER_SECONDS = STRANDED_TRIP_AFTER_MINUTES * SECONDS_PER_MINUTE;
+
+/** A route needs at least this many stops before progress along it can be worked out. */
+const MIN_STOPS_FOR_PROGRESS = 2;
+
 /** Service state shown on the tracking card. */
 const TRACKING_STATUSES = Object.freeze({
   ON_TIME: 'onTime',
@@ -37,5 +51,9 @@ module.exports = {
   STOP_REACHED_RADIUS_KM,
   NEARBY_SEARCH_RADIUS_KM,
   MINUTES_PER_HOUR,
+  SECONDS_PER_MINUTE,
+  STRANDED_TRIP_AFTER_MINUTES,
+  STRANDED_TRIP_AFTER_SECONDS,
+  MIN_STOPS_FOR_PROGRESS,
   TRACKING_STATUSES,
 };

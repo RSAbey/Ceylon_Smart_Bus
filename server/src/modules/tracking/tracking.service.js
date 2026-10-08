@@ -3,22 +3,29 @@
 const BusLocation = require('./busLocation.model');
 const Trip = require('../trips/trip.model');
 const RouteStop = require('../routes/routeStop.model');
+const Bus = require('../buses/bus.model');
+const { BUS_STATUSES } = require('../buses/bus.constants');
 const { TRIP_STATUSES } = require('../trips/trip.constants');
 const delayService = require('../delays/delay.service');
+const ticketService = require('../tickets/ticket.service');
 const { getDistanceInKm } = require('../../utils/geoDistance');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 const {
   AVERAGE_BUS_SPEED_KMH,
   LOCATION_STALE_AFTER_SECONDS,
+  MIN_STOPS_FOR_PROGRESS,
   MINUTES_PER_HOUR,
   NEARBY_SEARCH_RADIUS_KM,
+  SECONDS_PER_MINUTE,
   STOP_REACHED_RADIUS_KM,
+  STRANDED_TRIP_AFTER_SECONDS,
   TRACKING_STATUSES,
 } = require('./tracking.constants');
 
 const MILLISECONDS_PER_SECOND = 1000;
 const FIRST_STOP_INDEX = 0;
+const PERCENT_SCALE = 100;
 
 /**
  * Stores one GPS ping and copies it onto the trip, so passengers can read the latest position
@@ -216,28 +223,196 @@ async function findNearbyBuses({ latitude, longitude, radiusKm = NEARBY_SEARCH_R
 }
 
 /**
- * Every ongoing trip with its latest position, for the admin live fleet map.
- * @returns {Promise<object[]>} Ongoing trips with route, bus and position.
+ * Decides the service state shown on the fleet row: no usable position means there is nothing
+ * honest to say about arrival, so the bus reads as Disrupted rather than On time.
+ * @param {boolean} hasUsablePosition - Whether the latest ping is fresh enough to trust.
+ * @param {number} delayMinutes - Active delay from Member 04's delayService.
+ * @returns {string} A TRACKING_STATUSES value.
+ */
+function decideLiveStatus(hasUsablePosition, delayMinutes) {
+  if (!hasUsablePosition) return TRACKING_STATUSES.DISRUPTED;
+  return delayMinutes > 0 ? TRACKING_STATUSES.DELAYED : TRACKING_STATUSES.ON_TIME;
+}
+
+/**
+ * How far along its route a bus has got, for the fleet list.
+ * @param {{latitude: number, longitude: number} | null} busPosition - Latest bus position.
+ * @param {object[]} orderedStops - Route stops sorted by stopSequence.
+ * @returns {{nextStopName: string|null, stopsRemaining: number|null, progressPercent: number|null}}
+ *   Progress along the route, all null when it cannot be worked out.
+ */
+function summariseRouteProgress(busPosition, orderedStops) {
+  const emptyProgress = { nextStopName: null, stopsRemaining: null, progressPercent: null };
+  if (!busPosition || orderedStops.length < MIN_STOPS_FOR_PROGRESS) return emptyProgress;
+
+  const lastStopIndex = orderedStops.length - 1;
+  const currentStopIndex = findCurrentStopIndex(busPosition, orderedStops);
+  const nextStopIndex = Math.min(currentStopIndex + 1, lastStopIndex);
+  return {
+    nextStopName: orderedStops[nextStopIndex].stopName,
+    stopsRemaining: lastStopIndex - currentStopIndex,
+    progressPercent: Math.round((currentStopIndex / lastStopIndex) * PERCENT_SCALE),
+  };
+}
+
+/**
+ * Reads the stops of several routes in one query and groups them by route, so the fleet map can
+ * draw each route line without a query per bus.
+ * @param {string[]} routeIds - Routes currently being served.
+ * @returns {Promise<Map<string, object[]>>} Ordered stops keyed by route id.
+ */
+async function loadStopsByRoute(routeIds) {
+  const routeStops = await RouteStop.find({ routeId: { $in: routeIds } }).sort({ stopSequence: 1 });
+  const stopsByRoute = new Map();
+  routeStops.forEach((routeStop) => {
+    const routeKey = String(routeStop.routeId);
+    if (!stopsByRoute.has(routeKey)) stopsByRoute.set(routeKey, []);
+    stopsByRoute.get(routeKey).push(routeStop);
+  });
+  return stopsByRoute;
+}
+
+/**
+ * Builds one row of the admin fleet list: who is driving what, where it is and how it is running.
+ * Unlike the passenger feed this does name the driver, because operations staff need to call them.
+ * @param {object} runningTrip - Ongoing trip with route, bus and driver populated.
+ * @param {object[]} orderedStops - Stops of the route it is serving.
+ * @returns {Promise<object>} One fleet row.
+ */
+async function buildFleetRow(runningTrip, orderedStops) {
+  const positionAgeSeconds = getPositionAgeSeconds(runningTrip.lastLocationAt);
+  const hasUsablePosition =
+    positionAgeSeconds !== null && positionAgeSeconds <= LOCATION_STALE_AFTER_SECONDS;
+  const busPosition =
+    runningTrip.lastLatitude === undefined
+      ? null
+      : { latitude: runningTrip.lastLatitude, longitude: runningTrip.lastLongitude };
+
+  // Speed lives on the ping rather than the trip, so the newest ping is read for this one field.
+  const [latestPing, delayMinutes, ticketHolderIds] = await Promise.all([
+    BusLocation.findOne({ tripId: runningTrip.id }).sort({ recordedAt: -1 }).select('speedKmh'),
+    delayService.getActiveDelayMinutes(runningTrip.id),
+    ticketService.getActiveTicketHolderIds(runningTrip.id),
+  ]);
+
+  const driverProfile = runningTrip.driverId;
+  return {
+    tripId: runningTrip.id,
+    route: runningTrip.routeId,
+    bus: runningTrip.busId,
+    driver: driverProfile
+      ? {
+          id: driverProfile.id,
+          fullName: driverProfile.userId?.fullName,
+          mobile: driverProfile.userId?.mobile,
+          licenseNumber: driverProfile.licenseNumber,
+        }
+      : null,
+    position: busPosition,
+    positionAgeSeconds,
+    speedKmh: hasUsablePosition ? (latestPing?.speedKmh ?? null) : null,
+    delayMinutes,
+    liveStatus: decideLiveStatus(hasUsablePosition, delayMinutes),
+    isStranded: positionAgeSeconds === null || positionAgeSeconds >= STRANDED_TRIP_AFTER_SECONDS,
+    passengerCount: ticketHolderIds.length,
+    startedAt: runningTrip.startedAt,
+    ...summariseRouteProgress(hasUsablePosition ? busPosition : null, orderedStops),
+  };
+}
+
+/**
+ * Counts the figures above the fleet map: how the running buses are doing, and how many roadworthy
+ * buses are not out at all, which is the number an administrator acts on.
+ * @param {object[]} fleet - Rows from buildFleetRow.
+ * @param {string[]} runningBusIds - Buses currently on a trip.
+ * @returns {Promise<object>} Fleet summary counts.
+ */
+async function summariseFleet(fleet, runningBusIds) {
+  const idleBusCount = await Bus.countDocuments({
+    status: BUS_STATUSES.ACTIVE,
+    _id: { $nin: runningBusIds },
+  });
+  const countWithStatus = (liveStatus) =>
+    fleet.filter((fleetRow) => fleetRow.liveStatus === liveStatus).length;
+
+  return {
+    runningCount: fleet.length,
+    onTimeCount: countWithStatus(TRACKING_STATUSES.ON_TIME),
+    delayedCount: countWithStatus(TRACKING_STATUSES.DELAYED),
+    disruptedCount: countWithStatus(TRACKING_STATUSES.DISRUPTED),
+    strandedCount: fleet.filter((fleetRow) => fleetRow.isStranded).length,
+    idleBusCount,
+    passengersOnBoard: fleet.reduce((runningTotal, fleetRow) => runningTotal + fleetRow.passengerCount, 0),
+  };
+}
+
+/**
+ * Everything the admin Live Fleet screen shows: each running bus, the route lines to plot them
+ * against, and the summary counts above the map.
+ * @returns {Promise<{fleet: object[], routePaths: object[], summary: object}>} Live fleet state.
  */
 async function getFleetPositions() {
   const runningTrips = await Trip.find({ status: TRIP_STATUSES.ONGOING })
     .populate('routeId')
-    .populate('busId');
+    .populate('busId')
+    .populate({ path: 'driverId', populate: { path: 'userId', select: 'fullName mobile' } });
 
-  return Promise.all(
-    runningTrips.map(async (runningTrip) => ({
-      tripId: runningTrip.id,
-      route: runningTrip.routeId,
-      bus: runningTrip.busId,
-      position:
-        runningTrip.lastLatitude === undefined
-          ? null
-          : { latitude: runningTrip.lastLatitude, longitude: runningTrip.lastLongitude },
-      positionAgeSeconds: getPositionAgeSeconds(runningTrip.lastLocationAt),
-      delayMinutes: await delayService.getActiveDelayMinutes(runningTrip.id),
-      startedAt: runningTrip.startedAt,
-    }))
+  const servedRouteIds = [
+    ...new Set(runningTrips.map((runningTrip) => String(runningTrip.routeId?.id)).filter(Boolean)),
+  ];
+  const stopsByRoute = await loadStopsByRoute(servedRouteIds);
+
+  const fleet = await Promise.all(
+    runningTrips.map((runningTrip) =>
+      buildFleetRow(runningTrip, stopsByRoute.get(String(runningTrip.routeId?.id)) || [])
+    )
   );
+  const runningBusIds = runningTrips
+    .map((runningTrip) => runningTrip.busId?.id)
+    .filter(Boolean);
+
+  const routePaths = servedRouteIds.map((routeId) => ({
+    routeId,
+    stops: (stopsByRoute.get(routeId) || []).map((routeStop) => ({
+      stopName: routeStop.stopName,
+      stopSequence: routeStop.stopSequence,
+      latitude: routeStop.latitude,
+      longitude: routeStop.longitude,
+    })),
+  }));
+
+  return { fleet, routePaths, summary: await summariseFleet(fleet, runningBusIds) };
+}
+
+/**
+ * Force-ends a trip the driver app left running. Allowed only once the bus has stopped reporting
+ * for STRANDED_TRIP_AFTER_SECONDS: while the feed is live the driver is still on the road, and
+ * ending their trip from here would take a bus off the passenger map mid-journey.
+ * @param {string} tripId - Trip to close.
+ * @returns {Promise<object>} The closed trip.
+ */
+async function endStrandedTrip(tripId) {
+  const strandedTrip = await Trip.findById(tripId);
+  if (!strandedTrip) {
+    throw new AppError('Trip not found.', HTTP_STATUS.NOT_FOUND);
+  }
+  if (strandedTrip.status !== TRIP_STATUSES.ONGOING) {
+    throw new AppError('This trip has already finished.', HTTP_STATUS.BAD_REQUEST);
+  }
+
+  const positionAgeSeconds = getPositionAgeSeconds(strandedTrip.lastLocationAt);
+  const isStranded = positionAgeSeconds === null || positionAgeSeconds >= STRANDED_TRIP_AFTER_SECONDS;
+  if (!isStranded) {
+    throw new AppError(
+      `This bus reported its position ${Math.round(positionAgeSeconds / SECONDS_PER_MINUTE)} minute(s) ago, so the trip is still running. Ask the driver to end it from the driver app.`,
+      HTTP_STATUS.CONFLICT
+    );
+  }
+
+  strandedTrip.status = TRIP_STATUSES.CANCELLED;
+  strandedTrip.endedAt = new Date();
+  await strandedTrip.save();
+  return strandedTrip;
 }
 
 module.exports = {
@@ -245,4 +420,5 @@ module.exports = {
   getTripTracking,
   findNearbyBuses,
   getFleetPositions,
+  endStrandedTrip,
 };
