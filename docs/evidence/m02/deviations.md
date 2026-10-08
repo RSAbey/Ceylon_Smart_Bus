@@ -21,3 +21,13 @@
 | Vehicle list | Same list, plus the driver's name and mobile number | Operations staff need to call the driver of a bus that has stopped reporting. Passengers still never see the driver (NFR-08). |
 | No write action on this screen | "Trips left running" strip with an End trip action | A driver app closed without ending its trip leaves the bus running forever and blocks that driver's next run, because a driver may hold only one ongoing trip. The action is refused by the server until the bus has been silent for 15 minutes, so a bus that is simply in a tunnel cannot be taken off the passenger map by mistake. |
 | Static screen | Refreshes every 10 s, with a Pause control and the time of the last refresh | NFR-01 expects a position no more than 10 s old; pausing lets an administrator read the table without rows moving under the cursor. |
+
+## Live tracking maps in the mobile app
+
+| Planned | Implemented | Reason |
+|---|---|---|
+| `react-native-maps` with Google Maps (driver Live screen, passenger live tracking) | Leaflet over OpenStreetMap tiles, inside a `react-native-webview` | Google Maps on Android only draws once an API key is compiled into the app. Expo Go ignores that key whatever is in `.env`, so the map was a black box with the Google logo on every device the team could test on, and a development build was not practical before the deadline. OpenStreetMap needs no key and no account. The admin dashboard already draws its fleet map this way, so the two agree. |
+| Map recentres on the bus on every update | The route is fitted once, then only the bus marker moves | The screens passed `region` to `MapView`, so every position (every 5 s) snapped the camera back and the rider could not pan away. |
+| — | The map says so when it cannot load | Leaflet and the tiles come over the network. If they fail the screen shows one honest line and the stops, ETA and status below it still work, instead of a blank rectangle. |
+
+**Switching back to Google Maps**, if a key and a development build become available: `npx expo install react-native-maps`, restore the two map blocks from git history (commit before this one), and put `android.config.googleMaps.apiKey` back in `app.config.js` reading `GOOGLE_MAPS_API_KEY`.

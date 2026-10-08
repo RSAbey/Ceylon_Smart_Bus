@@ -130,7 +130,7 @@ Build Home's search + recent searches early, but wire **shortcuts, nearby buses 
 | Layer | Choice | Justification against project needs |
 |---|---|---|
 | Mobile | **React Native + Expo (SDK current), Expo Router, JavaScript** | One codebase for Android 8+/iOS 13+ (NFR-9); runs entry-level 2 GB devices; fast iteration; EAS builds an installable **APK** without a local Android toolchain |
-| Maps & location | `react-native-maps`, `expo-location` | Live bus map (FR-02), nearest bus (FR-03/NFR-05); location used only in-session (NFR-08) |
+| Maps & location | **Leaflet + OpenStreetMap tiles in a `react-native-webview`**, `expo-location` | Live bus map (FR-02), nearest bus (FR-03/NFR-05); location used only in-session (NFR-08). `react-native-maps` was dropped because Google Maps on Android needs an API key compiled into the app, which Expo Go ignores and which the team could not use in time; OpenStreetMap needs no key and the admin dashboard draws the same map the same way |
 | QR | `react-native-qrcode-svg` (ticket) · `expo-camera` barcode scanner (driver) | Scannable ticket (FR-06) and fast single-screen verification (FR-09/NFR-06) |
 | Offline | `AsyncStorage` ticket cache, `expo-secure-store` for JWT | Ticket viewable offline ≥24 h (NFR-04); token stored securely (NFR-07) |
 | Backend | **Node.js + Express** REST API, layered `routes → controller → service → model` | Same JS language across the team (4 members, 6 days); simple to explain in viva |

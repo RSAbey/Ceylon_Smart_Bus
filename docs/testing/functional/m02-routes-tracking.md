@@ -13,6 +13,17 @@ route 154) and `ruwan.driver@ceylonsmartbus.lk` (BUS-002, route 138). Passenger:
 `kasun.wijesinghe@example.com`. Password: `CeylonBus@2026`. "Driving" a bus means starting a trip in
 the driver app and letting it post positions, or running `npm run simulate` in `server/`.
 
+## Live tracking map, mobile (M)
+
+| TC-ID | Feature | Preconditions | Steps | Expected result | Actual result | Pass/Fail | Requirement ID |
+|---|---|---|---|---|---|---|---|
+| TC-M01 | Driver map draws | Driver on a trip, device online | Driver app → Live | A street map with the route line, its stops and the bus marker — not a blank or black box | | | FR-02 |
+| TC-M02 | The map follows the bus | As TC-M01, bus moving | Watch for a minute | The bus marker moves; the map does not snap back while you are panning | | | FR-02, NFR-01 |
+| TC-M03 | Current stop stands out | As TC-M01 | Look at the stop the bus has just reached | It is drawn larger and in the secondary colour, and its name shows when tapped | | | FR-02 |
+| TC-M04 | Passenger map draws | A bus running on a route | Passenger app → track that bus | The same map with the route, the stops and the bus | | | FR-02 |
+| TC-M05 | No connection | Turn the device's data off | Open the map | One line saying the map could not load; the stops, ETA and status below it still show | | | NFR-05 |
+| TC-M06 | Attribution | As TC-M01 | Look at the corner of the map | "© OpenStreetMap contributors" is visible, as the tile licence requires | | | NFR-07 |
+
 ## Live Fleet, admin (L)
 
 | TC-ID | Feature | Preconditions | Steps | Expected result | Actual result | Pass/Fail | Requirement ID |

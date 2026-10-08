@@ -2,11 +2,11 @@
 // see what passengers see — progress along the route, next stop, speed and whether the bus is late.
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
+import RouteMap from '../components/RouteMap';
 import AppCard from '../../../components/ui/AppCard';
 import AppButton from '../../../components/ui/AppButton';
 import StatusBadge from '../../../components/ui/StatusBadge';
@@ -25,11 +25,9 @@ import {
   startTrip,
 } from '../services/trackingApi';
 import {
-  COLOMBO_CENTRE,
   DRIVER_LIVE_MESSAGES,
   DRIVER_LOCATION_INTERVAL_MS,
-  MAP_LATITUDE_DELTA,
-  MAP_LONGITUDE_DELTA,
+  MAP_MESSAGES,
   TRACKING_CAPTIONS,
   TRACKING_STATUSES,
   WEAK_GPS_AFTER_SECONDS,
@@ -281,7 +279,6 @@ export default function DriverTripScreen() {
       ? orderedStops[currentStopIndex + 1]
       : orderedStops[orderedStops.length - 1];
   const busPosition = trackingCard?.position;
-  const mapCentre = busPosition || orderedStops[0] || COLOMBO_CENTRE;
   const trackingStatus = trackingCard?.status || TRACKING_STATUSES.DISRUPTED;
 
   return (
@@ -306,47 +303,14 @@ export default function DriverTripScreen() {
       </AppCard>
 
       <View style={styles.mapFrame}>
-        <MapView
-          provider={PROVIDER_GOOGLE}
+        <RouteMap
           style={styles.map}
-          region={{
-            latitude: mapCentre.latitude,
-            longitude: mapCentre.longitude,
-            latitudeDelta: MAP_LATITUDE_DELTA,
-            longitudeDelta: MAP_LONGITUDE_DELTA,
-          }}
+          stops={orderedStops}
+          currentStopId={trackingCard?.currentStopId}
+          busPosition={busPosition}
+          busLabel={MAP_MESSAGES.driverBusLabel}
           accessibilityLabel={`Map of route ${route?.routeNumber} showing your bus`}
-        >
-          {orderedStops.length > 1 && (
-            <Polyline
-              coordinates={orderedStops.map((routeStop) => ({
-                latitude: routeStop.latitude,
-                longitude: routeStop.longitude,
-              }))}
-              strokeColor={colors.primary[500]}
-              strokeWidth={sizes.borderThick + 1}
-            />
-          )}
-          {orderedStops.map((routeStop) => (
-            <Marker
-              key={routeStop.id}
-              coordinate={{ latitude: routeStop.latitude, longitude: routeStop.longitude }}
-              title={routeStop.stopName}
-              pinColor={
-                routeStop.id === trackingCard?.currentStopId
-                  ? colors.secondary[500]
-                  : colors.primary[600]
-              }
-            />
-          ))}
-          {busPosition && (
-            <Marker coordinate={busPosition} title="Your bus">
-              <View style={styles.busMarker}>
-                <Ionicons name="bus" size={sizes.iconMedium} color={colors.text.onColor} />
-              </View>
-            </Marker>
-          )}
-        </MapView>
+        />
       </View>
 
       <AppCard>
@@ -518,16 +482,6 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
-  },
-  busMarker: {
-    width: sizes.avatar,
-    height: sizes.avatar,
-    borderRadius: radii.pill,
-    backgroundColor: colors.primary[600],
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: sizes.borderThick,
-    borderColor: colors.surface,
   },
   nextStopRow: {
     flexDirection: 'row',

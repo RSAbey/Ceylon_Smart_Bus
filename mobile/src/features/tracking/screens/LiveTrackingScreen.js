@@ -2,10 +2,10 @@
 // Polls every 5 s so the shown position is never more than about 10 s old (NFR-01).
 import { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
+import RouteMap from '../components/RouteMap';
 import AppHeader from '../../../components/navigation/AppHeader';
 import AppCard from '../../../components/ui/AppCard';
 import AppButton from '../../../components/ui/AppButton';
@@ -17,9 +17,6 @@ import { TRACKING_POLL_INTERVAL_MS } from '../../../utils/constants';
 import { colors, radii, sizes, spacing, typography } from '../../../theme';
 import { fetchTripTracking } from '../services/trackingApi';
 import {
-  COLOMBO_CENTRE,
-  MAP_LATITUDE_DELTA,
-  MAP_LONGITUDE_DELTA,
   NO_ETA_PLACEHOLDER,
   TRACKING_CAPTIONS,
   TRACKING_STATUSES,
@@ -87,47 +84,17 @@ export default function LiveTrackingScreen() {
   const stops = trackingCard?.stops || [];
   const busPosition = trackingCard?.position;
   const isDisrupted = trackingCard?.status === TRACKING_STATUSES.DISRUPTED;
-  const mapCentre = busPosition || stops[0] || COLOMBO_CENTRE;
 
   return (
     <ScreenContainer hasPadding={false} header={screenHeader}>
-      <MapView
-        provider={PROVIDER_GOOGLE}
+      <RouteMap
         style={styles.map}
-        region={{
-          latitude: mapCentre.latitude,
-          longitude: mapCentre.longitude,
-          latitudeDelta: MAP_LATITUDE_DELTA,
-          longitudeDelta: MAP_LONGITUDE_DELTA,
-        }}
+        stops={stops}
+        currentStopId={trackingCard?.currentStopId}
+        busPosition={busPosition}
+        busLabel={`Bus ${trackingCard?.route?.routeNumber}`}
         accessibilityLabel={`Map showing route ${trackingCard?.route?.routeNumber}`}
-      >
-        {stops.length > 1 && (
-          <Polyline
-            coordinates={stops.map((routeStop) => ({
-              latitude: routeStop.latitude,
-              longitude: routeStop.longitude,
-            }))}
-            strokeColor={colors.primary[500]}
-            strokeWidth={sizes.borderThick + 1}
-          />
-        )}
-        {stops.map((routeStop) => (
-          <Marker
-            key={routeStop.id}
-            coordinate={{ latitude: routeStop.latitude, longitude: routeStop.longitude }}
-            title={routeStop.stopName}
-            pinColor={routeStop.id === trackingCard?.currentStopId ? colors.secondary[500] : colors.primary[600]}
-          />
-        ))}
-        {busPosition && (
-          <Marker coordinate={busPosition} title={`Bus ${trackingCard?.route?.routeNumber}`}>
-            <View style={styles.busMarker}>
-              <Ionicons name="bus" size={sizes.iconMedium} color={colors.text.onColor} />
-            </View>
-          </Marker>
-        )}
-      </MapView>
+      />
 
       <View style={styles.cardWrapper}>
         <AppCard>
@@ -191,16 +158,6 @@ export default function LiveTrackingScreen() {
 const styles = StyleSheet.create({
   map: {
     flex: 1,
-  },
-  busMarker: {
-    width: sizes.avatar,
-    height: sizes.avatar,
-    borderRadius: radii.pill,
-    backgroundColor: colors.primary[600],
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: sizes.borderThick,
-    borderColor: colors.surface,
   },
   cardWrapper: {
     padding: sizes.screenGutter,

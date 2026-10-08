@@ -19,12 +19,15 @@ export const TRACKING_CAPTIONS = Object.freeze({
 /** Shown in place of the number of minutes when there is no usable position. */
 export const NO_ETA_PLACEHOLDER = '—';
 
-/** How far the map zooms around the bus; roughly a few kilometres across. */
-export const MAP_LATITUDE_DELTA = 0.05;
-export const MAP_LONGITUDE_DELTA = 0.05;
-
 /** Fallback centre (Colombo) used before the first position arrives. */
 export const COLOMBO_CENTRE = Object.freeze({ latitude: 6.9271, longitude: 79.8612 });
+
+export const MAP_MESSAGES = Object.freeze({
+  busLabel: 'The bus',
+  driverBusLabel: 'Your bus',
+  mapFailed:
+    'The map could not load. It needs a connection for the street tiles; the stops and times below are still live.',
+});
 
 /** Driver location reporting while a trip runs. */
 export const DRIVER_LOCATION_INTERVAL_MS = 5000;
