@@ -1,4 +1,4 @@
-// API calls for the admin dashboard, delays and announcements (Member 04).
+// API calls for the admin Overview, Performance and Delays pages (Member 04).
 import apiClient from '../../services/apiClient';
 
 /**
@@ -38,80 +38,4 @@ export async function fetchDelayReports(tableFilters = {}) {
 export async function reviewDelayReport(delayReportId, reviewDetails) {
   const delayEnvelope = await apiClient.patch(`/admin/delays/${delayReportId}`, reviewDetails);
   return delayEnvelope.data;
-}
-
-/**
- * Every announcement, newest first.
- * @param {object} [listFilters] - Optional status and severity filters.
- * @returns {Promise<object[]>} Announcements with author and target route.
- */
-export async function fetchAnnouncements(listFilters = {}) {
-  const announcementEnvelope = await apiClient.get('/admin/announcements', { params: listFilters });
-  return announcementEnvelope.data.announcements;
-}
-
-/**
- * Saves a new announcement as a draft.
- * @param {object} announcementDetails - title, message, severity, targetRouteId and expiresAt.
- * @returns {Promise<object>} The stored announcement.
- */
-export async function createAnnouncement(announcementDetails) {
-  const announcementEnvelope = await apiClient.post('/admin/announcements', announcementDetails);
-  return announcementEnvelope.data;
-}
-
-/**
- * Edits a draft announcement.
- * @param {string} announcementId - Announcement to change.
- * @param {object} announcementChanges - Fields to change.
- * @returns {Promise<object>} The updated announcement.
- */
-export async function updateAnnouncement(announcementId, announcementChanges) {
-  const announcementEnvelope = await apiClient.patch(
-    `/admin/announcements/${announcementId}`,
-    announcementChanges
-  );
-  return announcementEnvelope.data;
-}
-
-/**
- * Publishes an announcement, which is the moment passengers are notified.
- * @param {string} announcementId - Announcement to publish.
- * @returns {Promise<{announcement: object, notifiedCount: number}>} The result.
- */
-export async function publishAnnouncement(announcementId) {
-  const announcementEnvelope = await apiClient.patch(
-    `/admin/announcements/${announcementId}/publish`
-  );
-  return announcementEnvelope.data;
-}
-
-/**
- * Archives a published announcement.
- * @param {string} announcementId - Announcement to archive.
- * @returns {Promise<object>} The archived announcement.
- */
-export async function archiveAnnouncement(announcementId) {
-  const announcementEnvelope = await apiClient.patch(
-    `/admin/announcements/${announcementId}/archive`
-  );
-  return announcementEnvelope.data;
-}
-
-/**
- * Deletes a draft announcement.
- * @param {string} announcementId - Announcement to delete.
- * @returns {Promise<void>} Resolves once deleted.
- */
-export async function deleteAnnouncement(announcementId) {
-  await apiClient.delete(`/admin/announcements/${announcementId}`);
-}
-
-/**
- * Active routes, for the announcement target picker.
- * @returns {Promise<object[]>} Routes with their number and endpoints.
- */
-export async function fetchRoutesForPicker() {
-  const routeEnvelope = await apiClient.get('/routes');
-  return routeEnvelope.data.routes.map((routeResult) => routeResult.route);
 }

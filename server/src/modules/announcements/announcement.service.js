@@ -1,6 +1,7 @@
 // Announcement business logic (Member 04): an admin writes a message, then publishes it, which is
 // the moment every targeted passenger gets a notification.
 const Announcement = require('./announcement.model');
+const Notification = require('../notifications/notification.model');
 const Route = require('../routes/route.model');
 const User = require('../users/user.model');
 const notificationService = require('../notifications/notification.service');
@@ -36,9 +37,40 @@ async function findAudience(announcement) {
 }
 
 /**
- * Every announcement for the admin list, newest first.
+ * How many passengers an announcement would reach if it were published now. The composer shows this
+ * before anything is sent, so "all passengers" is a number rather than a guess.
+ * @param {string | null} targetRouteId - Route to target, or null for every active passenger.
+ * @returns {Promise<number>} How many distinct passengers would be notified.
+ */
+async function countAudience(targetRouteId) {
+  const recipientUserIds = await findAudience({ targetRouteId: targetRouteId || null });
+  return new Set(recipientUserIds.map(String)).size;
+}
+
+/**
+ * How many alerts a published announcement actually produced, and how many have been read. Counted
+ * from the NOTIFICATION rows it created, so the figure is what passengers really received.
+ * @param {string[]} announcementIds - Announcements being listed.
+ * @returns {Promise<Map<string, {deliveredCount: number, readCount: number}>>} Figures by id.
+ */
+async function loadDeliveryFigures(announcementIds) {
+  const deliveryRows = await Notification.aggregate([
+    { $match: { announcementId: { $in: announcementIds } } },
+    {
+      $group: {
+        _id: '$announcementId',
+        deliveredCount: { $sum: 1 },
+        readCount: { $sum: { $cond: ['$isRead', 1, 0] } },
+      },
+    },
+  ]);
+  return new Map(deliveryRows.map((deliveryRow) => [String(deliveryRow._id), deliveryRow]));
+}
+
+/**
+ * Every announcement for the admin list, newest first, with what each one delivered.
  * @param {object} [listFilters] - Optional status and severity filters.
- * @returns {Promise<object[]>} Announcements with their author and target route.
+ * @returns {Promise<object>} Announcements with their delivery figures and the counts above them.
  */
 async function listAnnouncements(listFilters = {}) {
   const announcementFilter = {};
@@ -46,10 +78,41 @@ async function listAnnouncements(listFilters = {}) {
     if (listFilters[filterName]) announcementFilter[filterName] = listFilters[filterName];
   });
 
-  return Announcement.find(announcementFilter)
+  const announcements = await Announcement.find(announcementFilter)
     .sort({ createdAt: -1 })
     .populate('adminId', 'fullName')
     .populate('targetRouteId', 'routeNumber origin destination');
+
+  const deliveryFigures = await loadDeliveryFigures(
+    announcements.map((announcement) => announcement._id)
+  );
+
+  const [draftCount, publishedCount, archivedCount, deliveredTotal, readTotal] = await Promise.all([
+    Announcement.countDocuments({ status: ANNOUNCEMENT_STATUSES.DRAFT }),
+    Announcement.countDocuments({ status: ANNOUNCEMENT_STATUSES.PUBLISHED }),
+    Announcement.countDocuments({ status: ANNOUNCEMENT_STATUSES.ARCHIVED }),
+    Notification.countDocuments({ type: NOTIFICATION_TYPES.ANNOUNCEMENT }),
+    Notification.countDocuments({ type: NOTIFICATION_TYPES.ANNOUNCEMENT, isRead: true }),
+  ]);
+
+  return {
+    announcements: announcements.map((announcement) => {
+      const delivery = deliveryFigures.get(announcement.id);
+      return {
+        announcement,
+        deliveredCount: delivery?.deliveredCount || 0,
+        readCount: delivery?.readCount || 0,
+      };
+    }),
+    statusCounts: {
+      draft: draftCount,
+      published: publishedCount,
+      archived: archivedCount,
+      total: draftCount + publishedCount + archivedCount,
+    },
+    deliveredTotal,
+    readTotal,
+  };
 }
 
 /**
@@ -187,6 +250,7 @@ async function deleteAnnouncement(announcementId) {
 
 module.exports = {
   listAnnouncements,
+  countAudience,
   createAnnouncement,
   updateAnnouncement,
   publishAnnouncement,

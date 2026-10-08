@@ -11,8 +11,19 @@ const HTTP_STATUS = require('../../utils/httpStatus');
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function listAnnouncements(request, response) {
-  const announcements = await announcementService.listAnnouncements(request.query);
-  sendResponse(response, 'Announcements loaded.', { announcements });
+  const announcementList = await announcementService.listAnnouncements(request.query);
+  sendResponse(response, 'Announcements loaded.', announcementList);
+}
+
+/**
+ * GET /api/admin/announcements/audience?targetRouteId= - how many passengers a message would reach.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function getAudienceSize(request, response) {
+  const audienceCount = await announcementService.countAudience(request.query.targetRouteId);
+  sendResponse(response, 'Audience counted.', { audienceCount });
 }
 
 /**
@@ -85,6 +96,7 @@ async function deleteAnnouncement(request, response) {
 
 module.exports = {
   listAnnouncements: asyncHandler(listAnnouncements),
+  getAudienceSize: asyncHandler(getAudienceSize),
   createAnnouncement: asyncHandler(createAnnouncement),
   updateAnnouncement: asyncHandler(updateAnnouncement),
   publishAnnouncement: asyncHandler(publishAnnouncement),

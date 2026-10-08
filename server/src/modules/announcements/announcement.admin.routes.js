@@ -35,6 +35,19 @@ announcementAdminRouter.get(
   announcementController.listAnnouncements
 );
 
+// Must sit above the id routes so "audience" is never read as an announcement id.
+announcementAdminRouter.get(
+  '/audience',
+  [
+    query('targetRouteId')
+      .optional({ values: 'falsy' })
+      .isMongoId()
+      .withMessage('Choose a route from the list.'),
+  ],
+  validateRequest,
+  announcementController.getAudienceSize
+);
+
 announcementAdminRouter.post(
   '/',
   [
