@@ -15,6 +15,8 @@ import { ICON_SIZES } from '../../theme/iconSizes';
  * @param {string} [props.placeholder] - Placeholder text.
  * @param {string} [props.autoComplete] - Browser autofill hint.
  * @param {boolean} [props.isDisabled] - Greys the field out.
+ * @param {number} [props.rowCount] - Set this to write into a textarea of that many rows instead of
+ *   a one-line input, for a field that holds a paragraph such as a reply or an announcement.
  * @returns {import('react').JSX.Element} The field.
  */
 export default function FormField({
@@ -28,27 +30,38 @@ export default function FormField({
   placeholder,
   autoComplete,
   isDisabled = false,
+  rowCount,
 }) {
   const errorId = `${fieldId}-error`;
   const helperId = `${fieldId}-helper`;
+
+  // The two controls differ only in their tag and a couple of attributes, so everything else is
+  // written once and handed to whichever one is rendered.
+  const sharedFieldProps = {
+    id: fieldId,
+    value: fieldText,
+    placeholder,
+    disabled: isDisabled,
+    onChange: (changeEvent) => onFieldTextChange(changeEvent.target.value),
+    className: errorText ? 'form-field__input form-field__input--invalid' : 'form-field__input',
+    'aria-invalid': Boolean(errorText),
+    'aria-describedby': errorText ? errorId : helperText ? helperId : undefined,
+  };
 
   return (
     <div className="form-field">
       <label htmlFor={fieldId} className="text-label text-muted">
         {label}
       </label>
-      <input
-        id={fieldId}
-        type={inputType}
-        value={fieldText}
-        placeholder={placeholder}
-        autoComplete={autoComplete}
-        disabled={isDisabled}
-        onChange={(changeEvent) => onFieldTextChange(changeEvent.target.value)}
-        className={errorText ? 'form-field__input form-field__input--invalid' : 'form-field__input'}
-        aria-invalid={Boolean(errorText)}
-        aria-describedby={errorText ? errorId : helperText ? helperId : undefined}
-      />
+      {rowCount ? (
+        <textarea
+          rows={rowCount}
+          {...sharedFieldProps}
+          className={`${sharedFieldProps.className} form-field__input--multiline`}
+        />
+      ) : (
+        <input type={inputType} autoComplete={autoComplete} {...sharedFieldProps} />
+      )}
       {errorText && (
         <p id={errorId} className="form-field__error">
           <CircleAlert size={ICON_SIZES.small} aria-hidden="true" />

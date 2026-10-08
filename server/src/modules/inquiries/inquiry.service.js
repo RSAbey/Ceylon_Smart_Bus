@@ -3,13 +3,23 @@
 // server so the rule cannot be bypassed by calling the API directly.
 const Inquiry = require('./inquiry.model');
 const InquiryReply = require('./inquiryReply.model');
+const User = require('../users/user.model');
 const notificationService = require('../notifications/notification.service');
-const { INQUIRY_STATUSES, INQUIRY_EDIT_WINDOW_MINUTES } = require('./inquiry.constants');
+const {
+  INQUIRY_STATUSES,
+  INQUIRY_PRIORITIES,
+  INQUIRY_EDIT_WINDOW_MINUTES,
+  INQUIRY_REPLY_TARGET_HOURS,
+} = require('./inquiry.constants');
+const { USER_ROLES } = require('../users/user.constants');
 const { NOTIFICATION_TYPES } = require('../notifications/notification.constants');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
 const MILLISECONDS_PER_MINUTE = 60 * 1000;
+const MILLISECONDS_PER_HOUR = 60 * MILLISECONDS_PER_MINUTE;
+/** The value the inbox sends to ask for inquiries nobody has picked up. */
+const UNASSIGNED_FILTER = 'unassigned';
 
 /**
  * Whether an inquiry is still inside its edit window.
@@ -155,27 +165,90 @@ async function deleteInquiry(userId, inquiryId) {
 }
 
 /**
- * The admin inbox: every inquiry with who raised it, filtered by status, tag or priority (FR-08).
- * @param {object} [inboxFilters] - Optional status, tag and priority filters.
- * @returns {Promise<object[]>} Inquiries newest first, each with its author and reply count.
+ * How long an inquiry has been waiting, and whether that is longer than the team's reply target.
+ * Only an unanswered inquiry can be late: once it has a reply the clock has served its purpose.
+ * @param {object} inquiry - The inquiry to measure.
+ * @param {number} replyCount - How many replies it already has.
+ * @returns {{waitingHours: number, isWaitingTooLong: boolean}} Age in whole hours and the flag.
+ */
+function measureWait(inquiry, replyCount) {
+  const waitingHours = Math.floor(
+    (Date.now() - new Date(inquiry.createdAt).getTime()) / MILLISECONDS_PER_HOUR
+  );
+  return {
+    waitingHours,
+    isWaitingTooLong:
+      replyCount === 0 &&
+      inquiry.status === INQUIRY_STATUSES.OPEN &&
+      waitingHours >= INQUIRY_REPLY_TARGET_HOURS,
+  };
+}
+
+/**
+ * The admin inbox: every inquiry with who raised it and who is dealing with it, narrowed by status,
+ * tag, priority, assignee or a text search (FR-08). The counts above the table are returned with it,
+ * so the chips keep showing the whole picture while the table is filtered.
+ * @param {object} [inboxFilters] - Optional status, tag, priority, assigneeId and search filters.
+ * @returns {Promise<object>} Inquiries newest first, with the inbox counts.
  */
 async function listAllInquiries(inboxFilters = {}) {
   const inquiryFilter = {};
   ['status', 'tag', 'priority'].forEach((filterName) => {
     if (inboxFilters[filterName]) inquiryFilter[filterName] = inboxFilters[filterName];
   });
+  // "unassigned" is a queue an admin works from, so it is offered as an assignee like any other.
+  if (inboxFilters.assigneeId === UNASSIGNED_FILTER) {
+    inquiryFilter.assigneeId = { $exists: false };
+  } else if (inboxFilters.assigneeId) {
+    inquiryFilter.assigneeId = inboxFilters.assigneeId;
+  }
+  if (inboxFilters.searchText) {
+    // Escape the input so somebody typing "." or "*" cannot build their own regular expression.
+    const safeSearchText = inboxFilters.searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const searchPattern = new RegExp(safeSearchText, 'i');
+    inquiryFilter.$or = [{ subject: searchPattern }, { message: searchPattern }];
+  }
 
   const inquiries = await Inquiry.find(inquiryFilter)
     .sort({ createdAt: -1 })
     .populate('userId', 'fullName email role')
+    .populate('assigneeId', 'fullName')
     .populate('routeId', 'routeNumber');
 
-  return Promise.all(
-    inquiries.map(async (inquiry) => ({
-      inquiry,
-      replyCount: await InquiryReply.countDocuments({ inquiryId: inquiry.id }),
-    }))
+  const inboxRows = await Promise.all(
+    inquiries.map(async (inquiry) => {
+      const replyCount = await InquiryReply.countDocuments({ inquiryId: inquiry.id });
+      return { inquiry, replyCount, ...measureWait(inquiry, replyCount) };
+    })
   );
+
+  const [openCount, repliedCount, closedCount, highPriorityOpenCount, unassignedOpenCount] =
+    await Promise.all([
+      Inquiry.countDocuments({ status: INQUIRY_STATUSES.OPEN }),
+      Inquiry.countDocuments({ status: INQUIRY_STATUSES.REPLIED }),
+      Inquiry.countDocuments({ status: INQUIRY_STATUSES.CLOSED }),
+      Inquiry.countDocuments({
+        status: INQUIRY_STATUSES.OPEN,
+        priority: INQUIRY_PRIORITIES.HIGH,
+      }),
+      Inquiry.countDocuments({
+        status: INQUIRY_STATUSES.OPEN,
+        assigneeId: { $exists: false },
+      }),
+    ]);
+
+  return {
+    inquiries: inboxRows,
+    statusCounts: {
+      open: openCount,
+      replied: repliedCount,
+      closed: closedCount,
+      total: openCount + repliedCount + closedCount,
+    },
+    highPriorityOpenCount,
+    unassignedOpenCount,
+    replyTargetHours: INQUIRY_REPLY_TARGET_HOURS,
+  };
 }
 
 /**
@@ -186,6 +259,7 @@ async function listAllInquiries(inboxFilters = {}) {
 async function getInquiryForAdmin(inquiryId) {
   const matchingInquiry = await Inquiry.findById(inquiryId)
     .populate('userId', 'fullName email role')
+    .populate('assigneeId', 'fullName')
     .populate('routeId', 'routeNumber');
   if (!matchingInquiry) {
     throw new AppError('Inquiry not found.', HTTP_STATUS.NOT_FOUND);
@@ -248,6 +322,55 @@ async function closeInquiry(inquiryId) {
   return closableInquiry;
 }
 
+/**
+ * Reopens a closed inquiry, which is the only way back: replying to a closed one is refused, so
+ * without this a passenger who writes again could never be answered on the same thread.
+ * @param {string} inquiryId - Inquiry to reopen.
+ * @returns {Promise<object>} The reopened inquiry.
+ */
+async function reopenInquiry(inquiryId) {
+  const reopenableInquiry = await Inquiry.findById(inquiryId);
+  if (!reopenableInquiry) {
+    throw new AppError('Inquiry not found.', HTTP_STATUS.NOT_FOUND);
+  }
+  if (reopenableInquiry.status !== INQUIRY_STATUSES.CLOSED) {
+    throw new AppError('This inquiry is already open.', HTTP_STATUS.CONFLICT);
+  }
+  reopenableInquiry.status = INQUIRY_STATUSES.OPEN;
+  reopenableInquiry.closedAt = undefined;
+  await reopenableInquiry.save();
+  return reopenableInquiry;
+}
+
+/**
+ * Hands an inquiry to an administrator, or puts it back in the unassigned queue.
+ * @param {string} inquiryId - Inquiry to hand over.
+ * @param {string | null} assigneeUserId - The admin taking it, or null to unassign.
+ * @returns {Promise<object>} The inquiry with its assignee filled in.
+ */
+async function assignInquiry(inquiryId, assigneeUserId) {
+  const assignableInquiry = await Inquiry.findById(inquiryId);
+  if (!assignableInquiry) {
+    throw new AppError('Inquiry not found.', HTTP_STATUS.NOT_FOUND);
+  }
+
+  if (assigneeUserId) {
+    // Only an administrator can own an inquiry: a passenger id here would hide it from the team.
+    const assignee = await User.findById(assigneeUserId).select('role');
+    if (!assignee || assignee.role !== USER_ROLES.ADMIN) {
+      throw new AppError('Choose an administrator to assign this to.', HTTP_STATUS.UNPROCESSABLE_ENTITY, [
+        { field: 'assigneeId', message: 'That account is not an administrator.' },
+      ]);
+    }
+    assignableInquiry.assigneeId = assigneeUserId;
+  } else {
+    assignableInquiry.assigneeId = undefined;
+  }
+
+  await assignableInquiry.save();
+  return assignableInquiry.populate('assigneeId', 'fullName');
+}
+
 module.exports = {
   createInquiry,
   listMyInquiries,
@@ -258,4 +381,6 @@ module.exports = {
   getInquiryForAdmin,
   replyToInquiry,
   closeInquiry,
+  reopenInquiry,
+  assignInquiry,
 };

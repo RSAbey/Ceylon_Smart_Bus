@@ -20,6 +20,8 @@ const inquirySchema = new Schema(
     busId: { type: Schema.Types.ObjectId, ref: 'Bus' },
     driverId: { type: Schema.Types.ObjectId, ref: 'DriverProfile' },
     status: { type: String, enum: Object.values(INQUIRY_STATUSES), default: INQUIRY_STATUSES.OPEN },
+    /** assigneeId: the admin dealing with it; absent while it waits in the unassigned queue. */
+    assigneeId: { type: Schema.Types.ObjectId, ref: 'User' },
     closedAt: { type: Date },
   },
   { timestamps: true, toJSON: buildToJsonOptions() }

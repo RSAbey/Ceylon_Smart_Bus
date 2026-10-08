@@ -62,10 +62,12 @@ valid or not; an unmatched code has no ticket to reference, so no row is written
 | GET | `/api/inquiries/:inquiryId` | passenger, driver | One inquiry with its admin replies, `isEditable` and `editWindowMinutes`. | done |
 | PUT | `/api/inquiries/:inquiryId` | passenger, driver | Correct an inquiry while still `open` and inside the 5-minute window. | done |
 | DELETE | `/api/inquiries/:inquiryId` | passenger, driver | Withdraw an inquiry under the same two conditions. | done |
-| GET | `/api/admin/inquiries` | admin | The inbox. `?status=`, `?tag=`, `?priority=` filter it. | done |
+| GET | `/api/admin/inquiries` | admin | The inbox with the counts above the table (open, replied, closed, high-priority open, unassigned open) and the reply target. `?status=`, `?tag=`, `?priority=`, `?assigneeId=` (an admin id or `unassigned`) and `?search=` (subject or message) narrow the list, never the counts. Each row carries how long it has waited and whether it is past the target. | done |
 | GET | `/api/admin/inquiries/:inquiryId` | admin | One inquiry with its author and replies. | done |
 | POST | `/api/admin/inquiries/:inquiryId/replies` | admin | Reply. Sets status `replied` and raises an `inquiry_reply` notification. | done |
 | PATCH | `/api/admin/inquiries/:inquiryId/close` | admin | Close a dealt-with inquiry. | done |
+| PATCH | `/api/admin/inquiries/:inquiryId/reopen` | admin | Put a closed inquiry back on the list so it can be answered again. 409 if it is already open. | done |
+| PATCH | `/api/admin/inquiries/:inquiryId/assignee` | admin | Hand it to an administrator (body `{ assigneeId }`) or put it back in the unassigned queue (`{ assigneeId: null }`). 422 if that account is not an administrator. | done |
 
 **The 5-minute edit window** is enforced in `inquiry.service.js`, not only in the UI, so it cannot be bypassed by
 calling the API directly. Once an admin has replied the text is frozen whatever the clock says, so the conversation

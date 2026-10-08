@@ -1,8 +1,8 @@
 # Data model changes — Member 03
 
-`docs/ERD_AND_RELATIONAL.md` and the ERD diagram in the report **must be updated** with the four changes below.
-They were made to build the Select Seats, My Ticket and wallet screens, and the code and the submitted ERD are out
-of sync until the diagram is redrawn.
+`docs/ERD_AND_RELATIONAL.md` and the ERD diagram in the report **must be updated** with the eight changes below.
+They were made to build the Select Seats, My Ticket and wallet screens and the admin dashboard, and the code and the
+submitted ERD are out of sync until the diagram is redrawn.
 
 ## 1. A ticket may hold several seats
 
@@ -106,6 +106,23 @@ nothing. No stored route used it either, so the migration moved zero rows.
 **Draft is a real gate, not a label.** Passenger search and the stop-name picker both filter on
 `active`, so a draft route is invisible to passengers until an admin activates it, and a suspended
 one disappears again.
+
+## 8. `INQUIRY.assigneeId` (admin inbox)
+
+Group B, agreed 2026-10-08.
+
+| Table | Column | Type | Notes |
+|---|---|---|---|
+| `INQUIRY` | `assigneeId` | ObjectId | FK to USER, nullable. The administrator dealing with it |
+
+Relationship: `USER ||--o{ INQUIRY : "handles"`, alongside the existing `USER ||--o{ INQUIRY : raises`.
+
+**Why.** The inbox mockup shows who owns each inquiry, and without it two administrators answer the same complaint
+while another waits for days. The field is nullable on purpose: an inquiry nobody has picked up sits in an
+"unassigned" queue the inbox can filter on, which is the queue staff work from. The service refuses an assignee
+whose role is not `admin`, so an inquiry cannot be hidden by assigning it to a passenger.
+
+No stored inquiry needed backfilling: an absent `assigneeId` already means unassigned.
 
 ## What did NOT change
 

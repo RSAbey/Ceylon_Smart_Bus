@@ -9,6 +9,7 @@ const {
   inquiryIdValidationRules,
   replyValidationRules,
   inboxFilterValidationRules,
+  assignInquiryValidationRules,
 } = require('./inquiry.validation');
 
 const inquiryAdminRouter = express.Router();
@@ -39,6 +40,18 @@ inquiryAdminRouter.patch(
   inquiryIdValidationRules,
   validateRequest,
   inquiryController.closeInquiry
+);
+inquiryAdminRouter.patch(
+  '/:inquiryId/reopen',
+  inquiryIdValidationRules,
+  validateRequest,
+  inquiryController.reopenInquiry
+);
+inquiryAdminRouter.patch(
+  '/:inquiryId/assignee',
+  assignInquiryValidationRules,
+  validateRequest,
+  inquiryController.assignInquiry
 );
 
 module.exports = inquiryAdminRouter;

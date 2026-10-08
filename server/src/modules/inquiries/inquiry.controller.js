@@ -73,8 +73,15 @@ async function deleteInquiry(request, response) {
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function listAllInquiries(request, response) {
-  const inquiries = await inquiryService.listAllInquiries(request.query);
-  sendResponse(response, 'Inquiry inbox loaded.', { inquiries });
+  const { status, tag, priority, assigneeId, search } = request.query;
+  const inbox = await inquiryService.listAllInquiries({
+    status,
+    tag,
+    priority,
+    assigneeId,
+    searchText: search,
+  });
+  sendResponse(response, 'Inquiry inbox loaded.', inbox);
 }
 
 /**
@@ -114,6 +121,33 @@ async function closeInquiry(request, response) {
   sendResponse(response, 'Inquiry closed.', inquiry);
 }
 
+/**
+ * PATCH /api/admin/inquiries/:inquiryId/reopen - put a closed inquiry back on the list.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function reopenInquiry(request, response) {
+  const inquiry = await inquiryService.reopenInquiry(request.params.inquiryId);
+  sendResponse(response, 'Inquiry reopened.', inquiry);
+}
+
+/**
+ * PATCH /api/admin/inquiries/:inquiryId/assignee - hand an inquiry to an admin, or let it go.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function assignInquiry(request, response) {
+  const inquiry = await inquiryService.assignInquiry(
+    request.params.inquiryId,
+    request.body.assigneeId || null
+  );
+  sendResponse(response, request.body.assigneeId ? 'Inquiry assigned.' : 'Inquiry unassigned.', {
+    inquiry,
+  });
+}
+
 module.exports = {
   listMyInquiries: asyncHandler(listMyInquiries),
   getInquiryDetails: asyncHandler(getInquiryDetails),
@@ -124,4 +158,6 @@ module.exports = {
   getInquiryForAdmin: asyncHandler(getInquiryForAdmin),
   replyToInquiry: asyncHandler(replyToInquiry),
   closeInquiry: asyncHandler(closeInquiry),
+  reopenInquiry: asyncHandler(reopenInquiry),
+  assignInquiry: asyncHandler(assignInquiry),
 };

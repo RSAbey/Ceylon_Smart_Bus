@@ -77,6 +77,19 @@ has started a trip so a bus is in service. Passenger account: `kasun.wijesinghe@
 | TC-I10 | Frozen after a reply | TC-I09 done | As the passenger, try to edit it | 409 "This inquiry is replied and can no longer be edited" | | | FR-08 |
 | TC-I11 | Close an inquiry | A replied inquiry | Admin → Close | Status becomes Closed | | | FR-08 |
 | TC-I12 | Passenger cannot open the inbox | Signed in as a passenger | Request `GET /api/admin/inquiries` | 403 | | | NFR-08 |
+| TC-I13 | Inbox counts | Inquiries in more than one state | Open the inbox | Open, Replied, Unassigned and High priority are counted above the table, and the chips carry their own counts | | | FR-08, FR-10 |
+| TC-I14 | Counts ignore the filter | As TC-I13 | Type a search that matches one inquiry | The table narrows but the four figures and the chip counts still describe the whole inbox | | | FR-10 |
+| TC-I15 | Search | Inquiries exist | Search for words in a subject | Only inquiries whose subject or message contains them are listed | | | FR-08 |
+| TC-I16 | Dropdown filters | Inquiries of several tags and priorities | Choose a tag, then a priority | Only matching inquiries are listed | | | FR-08 |
+| TC-I17 | Unassigned queue | An unassigned inquiry exists | Choose "Nobody yet" in the assignee filter | Only inquiries nobody has picked up are listed | | | FR-08 |
+| TC-I18 | Assign | An open inquiry | Open it and choose an administrator | A toast confirms it, the row shows that name and the Unassigned figure falls by one | | | FR-08 |
+| TC-I19 | Assignment is admin-only | Note a passenger's user id | Call the assignee endpoint with it | 422 "That account is not an administrator" | | | NFR-08 |
+| TC-I20 | Waiting time | An inquiry raised over 24 hours ago with no reply | Look at its row | The Waiting column names it in words as having no answer yet, not by colour alone | | | FR-08, NFR-09 |
+| TC-I21 | Conversation | An inquiry with a reply | Open it | The passenger's message and each reply are shown in order, every one with its author and time | | | FR-08 |
+| TC-I22 | Short reply refused | An open inquiry | Type fewer than 10 characters and send | The field explains the length and nothing is sent | | | FR-08 |
+| TC-I23 | Closed cannot be answered | A closed inquiry | Open it | The reply box is replaced by a note and Send reply is disabled | | | FR-08 |
+| TC-I24 | Reopen | A closed inquiry | Press Reopen | Status returns to Open, the reply box comes back and a reply can be sent | | | FR-08 |
+| TC-I25 | Reopen an open inquiry | An open inquiry | Call the reopen endpoint | 409 "This inquiry is already open" | | | FR-08 |
 
 ## Tickets & Finance, admin (F)
 
@@ -110,6 +123,10 @@ edit window, the admin reply and the finance totals. The Android bundle also bui
 A second script covered the finance screen on 2026-10-08: **50 assertions, all passing**, covering the period and
 status filters, the summary shape, a fare revision from the dialog through to the fare a passenger is quoted, and a
 refund through to the wallet balance, the cancelled ticket, the released seat and the passenger's alert.
+
+A third script covered the inquiry inbox on 2026-10-08: **42 assertions, all passing**, covering the counts and
+every filter, assigning (including the refusal to assign to someone who is not an administrator), replying through
+to the passenger's own thread and alert, and closing, reopening and the refusals around both.
 
 That is a developer check on localhost, **not** the device testing this table records. Every Actual / Pass-Fail cell
 above stays empty until the case is run on the APK and the hosted admin dashboard.

@@ -20,6 +20,16 @@
 | Transactions list | The same list, with a Refund action on paid fares only | A refused action should never be offered: the button is hidden on fares that are already refunded or failed, and the dialog says what the refund will do to the ticket and the seat before it happens. |
 | (not in the design) | Refunding a used ticket keeps its seat booked | That journey really happened and the trip may still be running, so releasing the seat would resell a seat somebody is sitting in. |
 
+## Admin Inquiries page
+
+| Figma | Implemented | Reason |
+|---|---|---|
+| Inbox list | The same list plus who it is assigned to and how long it has waited | Without an owner two administrators answer the same complaint; without a waiting time nobody can see which one has been ignored. An inquiry with no answer after 24 hours is named as such in words, not only coloured (NFR-09). |
+| Detail panel sliding in from the right | The same content in the shared wide dialog | The dashboard already has one dialog component with a scrolling body and pinned actions; a second overlay pattern would be more code and one more thing to get wrong on a small screen. |
+| Reply box | The same, with the conversation above it in order and the author and time on every message | A reply written without the thread in front of you is how a passenger gets answered twice about different things. |
+| Close only | Close **and** Reopen | Replying to a closed inquiry is refused by the server, so without Reopen a passenger who writes again could never be answered on the same thread. |
+| Counts over the filtered list | Counts over the whole inbox, whatever the table is filtered to | A figure that moves when you type in the search box cannot be used to decide what to work on next. |
+
 ## Prototype limits to state in the report
 
 - **Payments are mocked.** No gateway is contacted. `POST /api/payments` records the chosen method and marks the
