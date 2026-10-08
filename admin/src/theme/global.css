@@ -120,8 +120,8 @@ a {
   width: var(--sidebar-width);
   display: flex;
   flex-direction: column;
-  background: var(--color-surface);
-  border-right: var(--border-thin) solid var(--color-border);
+  background: var(--color-chrome);
+  color: var(--color-chrome-text);
   z-index: 20;
   transition: transform var(--duration-normal) ease;
 }
@@ -131,7 +131,11 @@ a {
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-lg);
-  border-bottom: var(--border-thin) solid var(--color-border);
+  border-bottom: var(--border-thin) solid var(--color-chrome-border);
+}
+
+.sidebar__brand .text-caption {
+  color: var(--color-chrome-muted);
 }
 
 .sidebar__logo {
@@ -157,7 +161,7 @@ a {
   min-height: var(--min-touch-target);
   padding: 0 var(--space-md);
   border-radius: var(--radius-md);
-  color: var(--text-primary);
+  color: var(--color-chrome-muted);
   text-decoration: none;
   border: none;
   background: transparent;
@@ -167,12 +171,15 @@ a {
 }
 
 .sidebar__link:hover {
-  background: var(--color-background);
+  background: var(--color-chrome-raised);
+  color: var(--color-chrome-text);
 }
 
-.sidebar__link--active {
-  background: var(--primary-100);
-  color: var(--primary-600);
+/* The current page is the one solid block of colour in the sidebar, as in the Figma admin screens. */
+.sidebar__link--active,
+.sidebar__link--active:hover {
+  background: var(--primary-500);
+  color: var(--text-on-color);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -181,15 +188,15 @@ a {
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-sm);
-  border-top: var(--border-thin) solid var(--color-border);
+  border-top: var(--border-thin) solid var(--color-chrome-border);
 }
 
 .sidebar__logout {
-  color: var(--error-dark);
+  color: var(--error-main);
 }
 
 .sidebar__logout:hover {
-  background: var(--error-light);
+  background: var(--color-chrome-raised);
 }
 
 .topbar {
@@ -205,7 +212,9 @@ a {
   border-bottom: var(--border-thin) solid var(--color-border);
 }
 
-.topbar__menu-button {
+/* Scoped to the top bar so it beats the shared .icon-button rule further down the file: the
+   sidebar is always on screen above 900px, so the toggle only exists below it. */
+.topbar .topbar__menu-button {
   display: none;
 }
 
@@ -265,7 +274,7 @@ a {
     z-index: 15;
     border: none;
   }
-  .topbar__menu-button {
+  .topbar .topbar__menu-button {
     display: inline-flex;
   }
   .topbar {
@@ -685,34 +694,145 @@ a {
   color: var(--error-dark);
 }
 
+/* Sign in: the brand on the left, the form on the right. Below 900px the brand panel is dropped
+   and the form takes the whole screen, so a phone is not asked to scroll past a picture. */
 .login-page {
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.login-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-xxxl);
+  padding: var(--space-huge);
+  background: var(--color-chrome);
+  color: var(--color-chrome-text);
+}
+
+.login-brand__art {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+}
+
+.login-brand__line {
+  fill: none;
+  stroke: var(--color-chrome-border);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.login-brand__stop {
+  fill: var(--color-chrome-muted);
+}
+
+.login-brand__bus {
+  fill: var(--primary-500);
+  stroke: var(--color-chrome);
+  stroke-width: 5;
+}
+
+.login-brand__words {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.login-brand__name {
+  color: var(--color-chrome-text);
+}
+
+.login-brand__subtitle,
+.login-brand__footer {
+  color: var(--color-chrome-muted);
+}
+
+.login-brand__headline {
+  margin-top: var(--space-xl);
+  color: var(--color-chrome-text);
+}
+
+.login-brand__blurb {
+  max-width: 44ch;
+  color: var(--color-chrome-muted);
+}
+
+.login-form-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-xxl);
+  padding: var(--space-huge) var(--space-xxl);
+  background: var(--color-surface);
 }
 
-.login-card {
+.login-form {
   width: 100%;
   max-width: var(--modal-width);
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
 }
 
-.login-card__brand {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.login-form__footer {
+  padding-top: var(--space-lg);
+  border-top: var(--border-thin) solid var(--color-border);
   text-align: center;
-  gap: var(--space-sm);
 }
 
-.login-card__logo {
-  width: calc(var(--space-huge) * 3);
-  height: calc(var(--space-huge) * 3);
-  object-fit: contain;
+/* An input with an icon beside it, and optionally a button inside it (show / hide password). */
+.input-shell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0 var(--space-md);
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.input-shell:focus-within {
+  border-color: var(--primary-500);
+}
+
+.input-shell--invalid {
+  border-color: var(--error-main);
+}
+
+.input-shell__icon {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.input-shell__input {
+  flex: 1;
+  min-width: 0;
+  height: var(--button-height-medium);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.input-shell__input:focus {
+  outline: none;
+}
+
+.input-shell__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--icon-size-large);
+  min-height: var(--icon-size-large);
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.input-shell__button:hover {
+  color: var(--primary-600);
 }
 
 .full-page-center {
@@ -928,65 +1048,66 @@ a {
 }
 
 /* ---------------------------------------------------------------------------
-   Live Fleet: the latitude/longitude plot of the running buses, and the strip
-   listing trips a driver app left open. Marker shape carries the service state
-   as well as the colour, so the map does not rely on colour alone.
+   Live Fleet: the Leaflet street map, and the strip listing trips a driver app
+   left open. A marker's shape carries the service state as well as its colour,
+   so the map does not rely on colour alone.
    --------------------------------------------------------------------------- */
 
-.fleet-map {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.fleet-map__canvas {
-  width: 100%;
-  height: auto;
+.live-map {
+  height: 460px;
   border: var(--border-thin) solid var(--color-border);
   border-radius: var(--radius-md);
-  background: var(--color-background);
+  /* Leaflet draws its own panes above this; keep them under the sidebar and dialogs. */
+  z-index: 0;
 }
 
-.fleet-map__route {
-  fill: none;
-  stroke: var(--primary-300);
-  stroke-width: 3;
-  stroke-linejoin: round;
+.live-map--compact {
+  height: 320px;
 }
 
-.fleet-map__stop {
-  fill: var(--primary-600);
+.live-map__route {
+  stroke: var(--primary-500);
+  stroke-width: 4;
+  stroke-opacity: 0.7;
 }
 
-.fleet-map__bus {
-  cursor: pointer;
-}
-
-.fleet-map__bus--onTime {
-  fill: var(--success-main);
-}
-
-.fleet-map__bus--delayed {
-  fill: var(--warning-main);
-}
-
-.fleet-map__bus--disrupted {
-  fill: var(--error-main);
-}
-
-.fleet-map__bus--focused {
+.live-map__stop {
   stroke: var(--primary-600);
-  stroke-width: 3;
+  fill: var(--color-surface);
+  fill-opacity: 1;
 }
 
-.fleet-map__label {
-  fill: var(--text-primary);
-  stroke: none;
-  font-size: 15px;
-  font-weight: var(--font-weight-semibold);
+.live-map__bus {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: var(--border-thick) solid var(--color-surface);
+  box-shadow: var(--shadow-card);
 }
 
-.fleet-map__legend {
+.live-map__bus--onTime {
+  border-radius: var(--radius-pill);
+  background: var(--success-main);
+}
+
+/* A triangle: the same width and height, with the top corner kept and the bottom edge full width. */
+.live-map__bus--delayed {
+  background: var(--warning-main);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  border: 0;
+}
+
+.live-map__bus--disrupted {
+  background: var(--error-main);
+  border-radius: var(--radius-sm);
+}
+
+.live-map__bus--focused {
+  outline: var(--border-thick) solid var(--primary-600);
+  outline-offset: var(--space-xxs);
+}
+
+.live-map__legend {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-lg);
@@ -997,15 +1118,16 @@ a {
   font-size: var(--font-size-caption);
 }
 
-.fleet-map__legend-entry {
+.live-map__legend-entry {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
 }
 
-.fleet-map__legend-entry svg {
+.live-map__swatch {
+  width: var(--icon-size-small);
+  height: var(--icon-size-small);
   flex-shrink: 0;
-  cursor: default;
 }
 
 .fleet-alert {
@@ -1139,4 +1261,85 @@ a {
 
 .topbar__admin:hover {
   background: var(--primary-100);
+}
+
+/* Breakpoint 900px: the sign-in brand panel is a desktop luxury, so a phone gets the form alone. */
+@media (max-width: 900px) {
+  .login-page {
+    grid-template-columns: 1fr;
+  }
+  .login-brand {
+    display: none;
+  }
+  .login-form-panel {
+    padding: var(--space-xxl) var(--space-lg);
+  }
+}
+
+/* Dashboard: a coloured edge saying what kind of figure this is, and the chart's target line. */
+.stat-card--primary {
+  border-left: var(--space-xs) solid var(--primary-500);
+}
+
+.stat-card--warning {
+  border-left: var(--space-xs) solid var(--warning-main);
+}
+
+.stat-card--success {
+  border-left: var(--space-xs) solid var(--success-main);
+}
+
+.stat-card--error {
+  border-left: var(--space-xs) solid var(--error-main);
+}
+
+.bar-chart {
+  position: relative;
+}
+
+.bar-chart__target {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: flex-end;
+  border-top: var(--border-thin) dashed var(--warning-main);
+  color: var(--warning-dark);
+  pointer-events: none;
+}
+
+/* The label carries the card's own background, so it stays readable over a bar behind it. */
+.bar-chart__target span {
+  padding: 0 var(--space-xs);
+  background: var(--color-surface);
+}
+
+.dashboard-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--space-xxl);
+  align-items: start;
+}
+
+.delay-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delay-summary__entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md) 0;
+  border-bottom: var(--border-thin) solid var(--color-border);
+}
+
+.delay-summary__entry:last-child {
+  border-bottom: 0;
 }

@@ -68,7 +68,7 @@ follow that route. A published announcement is frozen so its text cannot drift f
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
 | GET | `/api/admin/dashboard/overview` | admin | KPI cards: passengers, drivers, buses, routes, ongoing trips, active delays, open inquiries, tickets today, takings today. | done |
-| GET | `/api/admin/dashboard/performance` | admin | Seven-day series for tickets, takings and delays, plus busiest routes and punctuality. | done |
+| GET | `/api/admin/dashboard/performance` | admin | Tickets, takings and delays per day over the window, the **on-time percentage per day** with the target it is measured against, the busiest routes and the punctuality totals. | done |
 
 Every figure is counted from the collections. Days with nothing are returned as zero rather than
 omitted, so a chart has no gaps. Punctuality counts a trip as on time when it has no delay report

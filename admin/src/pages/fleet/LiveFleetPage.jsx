@@ -9,10 +9,11 @@ import Button from '../../components/ui/Button';
 import StatusBadge from '../../components/ui/StatusBadge';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../components/ui/Toast';
-import FleetMap from './FleetMap';
+import LiveMap from '../../components/ui/LiveMap';
 import { endStrandedTrip, fetchLiveFleet } from './fleetApi';
 import {
   FLEET_MESSAGES,
+  MAP_LEGEND,
   FLEET_REFRESH_INTERVAL_MS,
   FLEET_STATUS_FILTERS,
   describeLiveStatus,
@@ -99,6 +100,18 @@ export default function LiveFleetPage() {
     visibleRouteIds.has(routePath.routeId)
   );
   const strandedRows = fleet.filter((fleetRow) => fleetRow.isStranded);
+
+  // Only a bus that has posted a position can be drawn; the rest are named under the map instead.
+  const plottedBuses = visibleFleet
+    .filter((fleetRow) => fleetRow.position)
+    .map((fleetRow) => ({
+      tripId: fleetRow.tripId,
+      label: fleetRow.bus?.busCode || 'Bus',
+      caption: `route ${fleetRow.route?.routeNumber} · ${describeLiveStatus(fleetRow).label}`,
+      liveStatus: fleetRow.liveStatus,
+      position: fleetRow.position,
+    }));
+  const unplottedCount = visibleFleet.length - plottedBuses.length;
 
   // Tickets are only mentioned when there are some, so the dialog says nothing about "0 tickets".
   const soldTicketCount = tripPendingClose?.passengerCount || 0;
@@ -299,12 +312,30 @@ export default function LiveFleetPage() {
         </p>
       </div>
 
-      <FleetMap
-        fleet={visibleFleet}
-        routePaths={visibleRoutePaths}
-        focusedTripId={focusedTripId}
-        onFocusBus={setFocusedTripId}
-      />
+      <section className="card page-section" aria-label="Fleet map">
+        <LiveMap
+          buses={plottedBuses}
+          routePaths={visibleRoutePaths}
+          focusedTripId={focusedTripId}
+          onFocusBus={setFocusedTripId}
+        />
+        <ul className="live-map__legend">
+          {MAP_LEGEND.map((legendEntry) => (
+            <li key={legendEntry.liveStatus} className="live-map__legend-entry">
+              <span
+                className={`live-map__swatch live-map__bus live-map__bus--${legendEntry.liveStatus}`}
+                aria-hidden="true"
+              />
+              {legendEntry.label}
+            </li>
+          ))}
+        </ul>
+        <p className="text-caption text-muted">
+          {FLEET_MESSAGES.mapCaption}
+          {unplottedCount > 0 &&
+            ` ${unplottedCount} running ${unplottedCount === 1 ? 'bus has' : 'buses have'} not posted a position and ${unplottedCount === 1 ? 'is' : 'are'} not on the map.`}
+        </p>
+      </section>
 
       <DataTable
         caption="Running buses with their driver, progress along the route and latest GPS ping"

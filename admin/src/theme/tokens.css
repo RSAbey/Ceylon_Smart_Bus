@@ -36,6 +36,14 @@
   --information-main: #3b82f6;
   --information-dark: #1d4ed8; /* not in the palette — see DESIGN_DEVIATIONS.md */
 
+  /* Dark chrome — the sign-in brand panel and the sidebar (Figma admin screens 59 and 60).
+     --color-chrome is the Primary Text navy used as a surface; the rest are tints of it. */
+  --color-chrome: #0f172a;
+  --color-chrome-raised: #1b2941;
+  --color-chrome-text: #f1f5f9;
+  --color-chrome-muted: #94a3b8;
+  --color-chrome-border: #243049;
+
   /* Neutrals & surfaces */
   --color-background: #f8fafc;
   --color-surface: #ffffff;

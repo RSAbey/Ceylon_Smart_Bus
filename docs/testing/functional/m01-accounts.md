@@ -66,6 +66,12 @@
 | TC-A58 | Wrong current password | As TC-A51 | Enter the wrong current password with a valid new one | "That is not your current password." under that field, **and you stay signed in** | | | NFR-07 |
 | TC-A59 | Change your password (Update) | As TC-A51 | Enter the correct current password and a new one twice | A toast confirms; signing out and back in works with the new password and fails with the old one | | | NFR-07 |
 | TC-A60 | Same password refused | As TC-A51 | Enter your current password as the new one | Refused with a message telling you to choose a different one | | | NFR-07 |
+| TC-A61 | Sign-in page layout | Signed out, window wider than 900px | Open the dashboard | The brand panel is on the left and the form on the right | | | FR-01 |
+| TC-A62 | Sign-in on a narrow window | Signed out, window under 900px | Open the dashboard | Only the form is shown, filling the screen | | | NFR-10 |
+| TC-A63 | Empty sign-in | On the sign-in page | Press Sign in with both boxes empty | Both fields are outlined and name what is missing; nothing is sent | | | FR-01 |
+| TC-A64 | Wrong password | On the sign-in page | Enter a correct email with a wrong password | A banner carries the server's message and the page stays put | | | FR-01, NFR-07 |
+| TC-A65 | Reveal the password | On the sign-in page | Type a password and press the eye | The characters become readable and the button changes to Hide password | | | NFR-10 |
+| TC-A66 | Sign in returns you where you were | Signed out, open `/fleet` | Sign in | The dashboard lands on Live Fleet, not Overview | | | FR-01 |
 
 
 ## Development checks already run (not a substitute for the table above)

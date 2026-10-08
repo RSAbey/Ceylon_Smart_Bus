@@ -18,7 +18,8 @@ the driver app and letting it post positions, or running `npm run simulate` in `
 | TC-ID | Feature | Preconditions | Steps | Expected result | Actual result | Pass/Fail | Requirement ID |
 |---|---|---|---|---|---|---|---|
 | TC-L01 | Running buses are listed | Two drivers are driving | Open Live Fleet | Both buses are listed with bus code, plate, route, driver, next stop, speed, ping age and status | | | FR-02, NFR-01 |
-| TC-L02 | Positions are plotted | As TC-L01 | Look at the map | One marker per bus, each labelled with its bus code, over the line of stops of its route | | | FR-02 |
+| TC-L02 | Positions are plotted | As TC-L01 | Look at the map | A street map with one marker per bus over the line of stops of its route; hovering a marker names the bus and its state | | | FR-02 |
+| TC-L02b | The map is a real map | As TC-L01 | Look at the map background and its corner | Streets and place names are drawn, with the OpenStreetMap attribution in the corner | | | FR-02 |
 | TC-L03 | Position updates by itself | As TC-L01 | Watch the page for 30 s without touching it | "Updated hh:mm:ss" changes and the markers move | | | NFR-01 |
 | TC-L04 | Live updates can be paused | As TC-L01 | Press Pause live updates, wait 30 s | The timestamp stops changing and reads "live updates paused"; Resume restarts it | | | NFR-10 |
 | TC-L05 | Delay is shown with its size | A driver reports a 12-minute delay from the driver app | Refresh Live Fleet | That bus reads "Delayed 12 min", its marker is a triangle, and the Running late figure is 1 | | | FR-08 |

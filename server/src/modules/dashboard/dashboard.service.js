@@ -21,6 +21,10 @@ const { startOfDaysAgo, toDayKey } = require('../../utils/dayWindow');
 const PERFORMANCE_WINDOW_DAYS = 7;
 /** How many routes the "busiest routes" table lists. */
 const TOP_ROUTE_LIMIT = 5;
+/** Turns a share into a percentage. */
+const PERCENT_SCALE = 100;
+/** The on-time percentage the service aims at, drawn as a line across the chart. */
+const ON_TIME_TARGET_PERCENT = 80;
 
 /**
  * The KPI cards on the Overview page.
@@ -98,6 +102,59 @@ async function buildDailySeries(documentModel, dateFieldName, extraFilter = {}, 
 }
 
 /**
+ * On-time percentage for each day of the window: the trips that ran that day against the ones a
+ * driver reported a delay on. A day with no trips reads as 0, which is what the chart then draws.
+ * @returns {Promise<Array<{day: string, total: number}>>} One percentage per day, oldest first.
+ */
+async function buildOnTimeSeries() {
+  const windowStart = startOfDaysAgo(PERFORMANCE_WINDOW_DAYS - 1);
+  const [tripRows, delayRows] = await Promise.all([
+    Trip.aggregate([
+      { $match: { startedAt: { $gte: windowStart } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$startedAt' } },
+          tripCount: { $sum: 1 },
+        },
+      },
+    ]),
+    DelayReport.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: windowStart },
+          status: { $ne: DELAY_REPORT_STATUSES.CANCELLED },
+        },
+      },
+      {
+        $group: {
+          // A trip with two reports is still one late bus, so the ids are collected as a set.
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          delayedTripIds: { $addToSet: '$tripId' },
+        },
+      },
+    ]),
+  ]);
+
+  const tripsByDay = new Map(tripRows.map((tripRow) => [tripRow._id, tripRow.tripCount]));
+  const delayedByDay = new Map(
+    delayRows.map((delayRow) => [delayRow._id, delayRow.delayedTripIds.length])
+  );
+
+  const onTimeSeries = [];
+  for (let dayOffset = PERFORMANCE_WINDOW_DAYS - 1; dayOffset >= 0; dayOffset -= 1) {
+    const dayKey = toDayKey(startOfDaysAgo(dayOffset));
+    const tripCount = tripsByDay.get(dayKey) || 0;
+    const delayedCount = Math.min(delayedByDay.get(dayKey) || 0, tripCount);
+    const onTimeCount = tripCount - delayedCount;
+    onTimeSeries.push({
+      day: dayKey,
+      total: tripCount > 0 ? Math.round((onTimeCount / tripCount) * PERCENT_SCALE) : 0,
+    });
+  }
+  return onTimeSeries;
+}
+
+/**
  * The busiest routes by tickets sold, for the Performance table.
  * @returns {Promise<object[]>} Routes with their ticket count and takings.
  */
@@ -149,7 +206,7 @@ async function getPunctuality() {
     tripCount,
     onTimeTripCount,
     delayedTripCount,
-    onTimePercentage: tripCount > 0 ? Math.round((onTimeTripCount / tripCount) * 100) : 0,
+    onTimePercentage: tripCount > 0 ? Math.round((onTimeTripCount / tripCount) * PERCENT_SCALE) : 0,
   };
 }
 
@@ -158,21 +215,25 @@ async function getPunctuality() {
  * @returns {Promise<object>} Daily series, busiest routes and punctuality.
  */
 async function getPerformance() {
-  const [ticketsPerDay, takingsPerDay, delaysPerDay, busiestRoutes, punctuality] = await Promise.all([
-    buildDailySeries(Ticket, 'createdAt'),
-    buildDailySeries(Payment, 'paidAt', { status: PAYMENT_STATUSES.PAID }, 'amount'),
-    buildDailySeries(DelayReport, 'createdAt', {
-      status: { $ne: DELAY_REPORT_STATUSES.CANCELLED },
-    }),
-    getBusiestRoutes(),
-    getPunctuality(),
-  ]);
+  const [ticketsPerDay, takingsPerDay, delaysPerDay, onTimePerDay, busiestRoutes, punctuality] =
+    await Promise.all([
+      buildDailySeries(Ticket, 'createdAt'),
+      buildDailySeries(Payment, 'paidAt', { status: PAYMENT_STATUSES.PAID }, 'amount'),
+      buildDailySeries(DelayReport, 'createdAt', {
+        status: { $ne: DELAY_REPORT_STATUSES.CANCELLED },
+      }),
+      buildOnTimeSeries(),
+      getBusiestRoutes(),
+      getPunctuality(),
+    ]);
 
   return {
     windowDays: PERFORMANCE_WINDOW_DAYS,
+    onTimeTargetPercent: ON_TIME_TARGET_PERCENT,
     ticketsPerDay,
     takingsPerDay,
     delaysPerDay,
+    onTimePerDay,
     busiestRoutes,
     punctuality,
   };

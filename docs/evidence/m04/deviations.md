@@ -52,3 +52,16 @@ stop Details panel expands without breaking the layout.
 | (not in the design) | The composer and the send confirmation say how many passengers the message will reach | "All passengers" is not a number. Counting the audience before anything is sent is the difference between telling 3 people and telling nobody, and it is the same count the publish step then uses. |
 | Every row offers Publish, Edit, Archive, Delete | Each action appears only where the server would accept it | A sent notification cannot be edited or deleted because its alerts are already in people's feeds. Offering a button that can only fail is worse than not offering it. |
 | Message typed into a single-line box | A five-row textarea | The field holds up to 1000 characters; a one-line input hid all but the end of it while writing. |
+
+## Admin dashboard redesign (Figma admin screen 59)
+
+| Figma | Implemented | Reason |
+|---|---|---|
+| Four KPI cards with a coloured left edge | Six: the four from the design, plus tickets sold and takings today | The two money figures were already counted and are what a manager asks for first. Dropping them to match the picture would have hidden real data. |
+| "Service Performance — on-time percentage, last 7 days" with an 80% target line | The same, counted per day from the trips that ran against the ones a driver reported a delay on | The database had no daily on-time figure before this; it is now worked out in `dashboard.service.js`. A trip with two reports is still one late bus, so the trip ids are collected as a set. |
+| Delay summary panel | The same, from the open delay reports, with the route, bus, driver, minutes and reason | Nothing is sampled: these are the reports still open on the Delays page. |
+| Live fleet map panel | The same real map as Live Fleet, at half height | One map component serves both pages, so what the dashboard shows and what Live Fleet shows cannot drift apart. |
+| "System uptime 99.7%" pill | Omitted | Nothing measures uptime. A number on screen that no code produces would be invented. |
+| Avatar with a dropdown in the page header | The signed-in name already sits in the top bar and opens My profile | One place for the account, not two. |
+| Light sidebar (earlier build) | Dark navy sidebar with the current page as a solid blue block | Matches admin screens 59 and 60, which both show dark chrome. The colours are tokens (`--color-chrome*`) rather than hex in a screen. |
+| Hamburger beside the page title on desktop | Only below 900px, where the sidebar is off-canvas | It was showing at every width: the shared `.icon-button` rule sits later in the stylesheet and was overriding `display: none`. The rule is now scoped to the top bar so it wins. |

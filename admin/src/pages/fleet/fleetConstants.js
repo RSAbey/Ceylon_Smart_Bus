@@ -7,6 +7,13 @@ export const LIVE_STATUSES = Object.freeze({
   DISRUPTED: 'disrupted',
 });
 
+/** The map legend: shape as well as colour, so the map never relies on colour alone (NFR-09). */
+export const MAP_LEGEND = Object.freeze([
+  { liveStatus: LIVE_STATUSES.ON_TIME, label: 'On time (circle)' },
+  { liveStatus: LIVE_STATUSES.DELAYED, label: 'Delayed (triangle)' },
+  { liveStatus: LIVE_STATUSES.DISRUPTED, label: 'No signal (square)' },
+]);
+
 export const FLEET_STATUS_FILTERS = Object.freeze([
   { label: 'All buses', liveStatus: '' },
   { label: 'On time', liveStatus: LIVE_STATUSES.ON_TIME },
@@ -29,7 +36,7 @@ export const FLEET_MESSAGES = Object.freeze({
   title: 'Live Fleet',
   subtitle: 'Every bus on an ongoing trip, from its latest GPS ping',
   mapCaption:
-    'Positions are plotted by longitude and latitude from the newest ping of each bus, over the stops of the routes being served.',
+    'Each marker is the newest position its driver posted, drawn on an OpenStreetMap street map over the stops of the routes being served.',
   noPositions: 'No bus is reporting a position right now.',
   emptyTitle: 'No bus matches',
   emptyMessage: 'Clear the filter, or wait for a driver to start a trip.',

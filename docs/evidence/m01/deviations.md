@@ -75,3 +75,14 @@ than expanding the data model for rows that no requirement asks for.
 | Activity or statistics panel | Three counted figures: notifications they published, replies they wrote, inquiries still assigned to them | These are the only three things the data model can attribute to one administrator. Anything else on that panel would have been invented. |
 | Delete account | Not offered | The server already refuses to delete an admin account, and an administrator deleting themselves would leave the dashboard with one fewer way in. Blocking and unblocking are done by another administrator from Passengers or Transport Data. |
 | Profile reached from a menu | Reached from the signed-in name in the top bar and from "My profile" above Logout in the sidebar | Both are where people look; neither needs a new menu pattern. |
+
+## Admin sign-in page (Figma admin screen 60)
+
+| Figma | Implemented | Reason |
+|---|---|---|
+| Two panels: brand on the left, form on the right | The same, with the route illustration drawn in SVG from the panel's own coordinates | Below 900px the brand panel is dropped so a phone gets the form alone rather than scrolling past a picture. |
+| "Invalid email or password" banner above the fields | The same banner, carrying the server's own message | The wording comes from the API, so the page cannot claim a different reason from the one the server decided. |
+| Email and password fields with an icon, and an eye to reveal the password | The same | The eye helps on a password typed on a shared keyboard; it is a button with its own label, so a screen reader announces Show / Hide password. |
+| "Remember me" checkbox | Omitted | The session already persists until the admin signs out, so the box would have had nothing to switch. |
+| "Forgot password?" link | Omitted | There is no password-reset flow for an administrator: the OTP flow in the data model belongs to passenger registration. A link that goes nowhere is worse than no link. An admin changes their password from My profile, and another admin can be asked for help. |
+| "© 2026 Ceylon Smart Bus · Admin Console v1.0" | "Ceylon Smart Bus · IT3060 group WE-133 · admin console" | There is no release numbering to cite, and the module and group are what this build actually is. |

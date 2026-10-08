@@ -1,36 +1,65 @@
-// Overview page (Member 04, FR-10): the KPI cards an admin sees first, plus what needs attention.
+// Dashboard (Member 04, FR-10): what an operations desk needs on one screen — how the fleet is
+// running now, how punctual the week has been, which delays are open, and where the buses are.
+// Every number is counted from the database; nothing here is an estimate.
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Bus, MessageSquare, Route, Ticket, TrendingUp, UserCog, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import PageHeader from '../../components/layout/PageHeader';
 import StatCard from '../../components/ui/StatCard';
+import DailyBarChart from '../../components/ui/DailyBarChart';
+import LiveMap from '../../components/ui/LiveMap';
 import ErrorState from '../../components/ui/ErrorState';
 import Button from '../../components/ui/Button';
-import { fetchOverview } from './dashboardApi';
+import StatusBadge from '../../components/ui/StatusBadge';
+import { fetchDelayReports, fetchOverview, fetchPerformance } from './dashboardApi';
+// The map shows the same live fleet as the Live Fleet page, so it reads from the same endpoint.
+import { fetchLiveFleet } from '../fleet/fleetApi';
+import { MAP_LEGEND, describeLiveStatus } from '../fleet/fleetConstants';
 
-/** Rupee wording, kept here so every figure on the page reads the same. */
 const CURRENCY_PREFIX = 'Rs.';
+const LOADING_FIGURE = '--';
+/** How many open delays the summary panel lists before it sends you to the Delays page. */
+const DELAY_SUMMARY_LIMIT = 4;
+/** Plain wording for a delay reason, matching the server's labels. */
+const DELAY_REASON_LABELS = Object.freeze({
+  heavy_traffic: 'Heavy traffic',
+  road_closure: 'Road closure',
+  mechanical: 'Mechanical problem',
+  weather: 'Bad weather',
+  other: 'Other',
+});
 
 /**
- * Admin landing page. Every number is counted from the database, never estimated.
+ * Admin landing page.
  * @returns {import('react').JSX.Element} The page.
  */
 export default function OverviewPage() {
   const [overview, setOverview] = useState(null);
+  const [performance, setPerformance] = useState(null);
+  const [openDelays, setOpenDelays] = useState([]);
+  const [liveFleet, setLiveFleet] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
+  const [lastRefreshedLabel, setLastRefreshedLabel] = useState('');
 
   const [reloadCounter, setReloadCounter] = useState(0);
-  const loadOverview = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
+  const loadDashboard = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
 
   useEffect(() => {
     let isEffectActive = true;
-    fetchOverview()
-      .then((loadedOverview) => {
-        if (isEffectActive) {
-          setOverview(loadedOverview);
-          setLoadErrorMessage('');
-        }
+    Promise.all([
+      fetchOverview(),
+      fetchPerformance(),
+      fetchDelayReports({ status: 'active' }),
+      fetchLiveFleet(),
+    ])
+      .then(([loadedOverview, loadedPerformance, loadedDelays, loadedFleet]) => {
+        if (!isEffectActive) return;
+        setOverview(loadedOverview);
+        setPerformance(loadedPerformance);
+        setOpenDelays(loadedDelays);
+        setLiveFleet(loadedFleet);
+        setLastRefreshedLabel(new Date().toLocaleTimeString());
+        setLoadErrorMessage('');
       })
       .catch((loadError) => {
         if (isEffectActive) setLoadErrorMessage(loadError.message);
@@ -44,108 +73,84 @@ export default function OverviewPage() {
     };
   }, [reloadCounter]);
 
+  const pageHeader = (
+    <PageHeader
+      title="Dashboard"
+      subtitle="Transport operations overview"
+      actions={<Button label="Refresh" variant="outline" onClick={loadDashboard} />}
+    />
+  );
+
   if (loadErrorMessage) {
     return (
       <>
-        <PageHeader title="Overview" subtitle="Key statistics for today at a glance" />
-        <ErrorState message={loadErrorMessage} onRetry={loadOverview} />
+        {pageHeader}
+        <ErrorState message={loadErrorMessage} onRetry={loadDashboard} />
       </>
     );
   }
 
   const statCards = [
     {
-      key: 'trips',
+      key: 'buses',
       label: 'Buses on the road',
-      statValue: isLoading ? '--' : overview.ongoingTripCount,
-      icon: Bus,
+      statValue: isLoading ? LOADING_FIGURE : overview.ongoingTripCount,
       helperText: 'Trips running right now',
-    },
-    {
-      key: 'tickets',
-      label: 'Tickets sold today',
-      statValue: isLoading ? '--' : overview.ticketsToday,
-      icon: Ticket,
-      helperText: 'Since midnight',
-    },
-    {
-      key: 'takings',
-      label: 'Collected today',
-      statValue: isLoading ? '--' : `${CURRENCY_PREFIX} ${overview.takingsToday}`,
-      icon: TrendingUp,
-      helperText: 'Paid fares only, refunds excluded',
+      accent: 'primary',
     },
     {
       key: 'delays',
-      label: 'Active delays',
-      statValue: isLoading ? '--' : overview.activeDelayCount,
-      icon: AlertTriangle,
+      label: 'Delayed',
+      statValue: isLoading ? LOADING_FIGURE : overview.activeDelayCount,
       helperText: 'Reported by drivers and not yet cleared',
+      accent: 'warning',
     },
     {
-      key: 'passengers',
-      label: 'Passengers',
-      statValue: isLoading ? '--' : overview.passengerCount,
-      icon: Users,
-      helperText: 'Active accounts',
-    },
-    {
-      key: 'drivers',
-      label: 'Drivers',
-      statValue: isLoading ? '--' : overview.driverCount,
-      icon: UserCog,
-      helperText: 'Active accounts',
+      key: 'onTime',
+      label: 'On time',
+      statValue: isLoading ? LOADING_FIGURE : `${performance.punctuality.onTimePercentage}%`,
+      helperText: isLoading
+        ? undefined
+        : `${performance.punctuality.onTimeTripCount} of ${performance.punctuality.tripCount} trips in the last ${performance.windowDays} days`,
+      accent: 'success',
     },
     {
       key: 'routes',
       label: 'Routes and buses',
-      statValue: isLoading ? '--' : `${overview.routeCount} / ${overview.busCount}`,
-      icon: Route,
+      statValue: isLoading ? LOADING_FIGURE : `${overview.routeCount} / ${overview.busCount}`,
       helperText: 'Routes served by registered buses',
+      accent: 'primary',
     },
     {
-      key: 'inquiries',
-      label: 'Open inquiries',
-      statValue: isLoading ? '--' : overview.openInquiryCount,
-      icon: MessageSquare,
-      helperText: 'Waiting for a reply',
+      key: 'tickets',
+      label: 'Tickets sold today',
+      statValue: isLoading ? LOADING_FIGURE : overview.ticketsToday,
+      helperText: 'Since midnight',
+      accent: 'primary',
+    },
+    {
+      key: 'takings',
+      label: 'Collected today',
+      statValue: isLoading ? LOADING_FIGURE : `${CURRENCY_PREFIX} ${overview.takingsToday}`,
+      helperText: 'Paid fares only, refunds excluded',
+      accent: 'success',
     },
   ];
 
-  const needsAttention =
-    !isLoading && (overview.activeDelayCount > 0 || overview.openInquiryCount > 0);
+  const plottedBuses = (liveFleet?.fleet || [])
+    .filter((fleetRow) => fleetRow.position)
+    .map((fleetRow) => ({
+      tripId: fleetRow.tripId,
+      label: fleetRow.bus?.busCode || 'Bus',
+      caption: `route ${fleetRow.route?.routeNumber} · ${describeLiveStatus(fleetRow).label}`,
+      liveStatus: fleetRow.liveStatus,
+      position: fleetRow.position,
+    }));
+  const summarisedDelays = openDelays.slice(0, DELAY_SUMMARY_LIMIT);
 
   return (
     <>
-      <PageHeader
-        title="Overview"
-        subtitle="Key statistics for today at a glance"
-        actions={<Button label="Refresh" variant="outline" onClick={loadOverview} />}
-      />
-
-      {needsAttention && (
-        <section className="card" aria-label="Needs attention">
-          <h2 className="text-heading-3">Needs attention</h2>
-          <ul className="stack-sm">
-            {overview.activeDelayCount > 0 && (
-              <li>
-                <Link to="/delays">
-                  {overview.activeDelayCount} active{' '}
-                  {overview.activeDelayCount === 1 ? 'delay' : 'delays'} reported by drivers
-                </Link>
-              </li>
-            )}
-            {overview.openInquiryCount > 0 && (
-              <li>
-                <Link to="/inquiries">
-                  {overview.openInquiryCount} open{' '}
-                  {overview.openInquiryCount === 1 ? 'inquiry' : 'inquiries'} waiting for a reply
-                </Link>
-              </li>
-            )}
-          </ul>
-        </section>
-      )}
+      {pageHeader}
 
       <section className="stat-grid" aria-label="Key statistics" aria-busy={isLoading}>
         {statCards.map((statCard) => (
@@ -153,11 +158,93 @@ export default function OverviewPage() {
             key={statCard.key}
             label={statCard.label}
             statValue={statCard.statValue}
-            icon={statCard.icon}
             helperText={statCard.helperText}
+            accent={statCard.accent}
           />
         ))}
       </section>
+
+      {!isLoading && (
+        <>
+          <div className="dashboard-columns">
+            <DailyBarChart
+              title="Service performance"
+              subtitle={`On-time percentage, last ${performance.windowDays} days`}
+              dailySeries={performance.onTimePerDay}
+              valueSuffix="%"
+              targetValue={performance.onTimeTargetPercent}
+            />
+
+            <section className="card page-section" aria-label="Delay summary">
+              <h2 className="text-heading3">Delay summary</h2>
+              <p className="text-caption text-muted">
+                Reported by drivers and still open. Every one of these is also added to the arrival
+                time passengers see.
+              </p>
+              {summarisedDelays.length === 0 ? (
+                <p className="text-body-medium text-muted">No delay is open right now.</p>
+              ) : (
+                <ul className="delay-summary">
+                  {summarisedDelays.map((delayRow) => (
+                    <li key={delayRow.delayReport.id} className="delay-summary__entry">
+                      <span>
+                        <strong>Route {delayRow.route?.routeNumber || 'unknown'}</strong>
+                        <span className="text-caption text-muted">
+                          {' '}
+                          · {delayRow.bus?.plateNumber || 'bus not known'} ·{' '}
+                          {delayRow.driverName || 'driver not recorded'}
+                        </span>
+                      </span>
+                      <span className="button-row">
+                        <span>{delayRow.delayReport.delayMinutes} min</span>
+                        <StatusBadge
+                          status="delayed"
+                          label={
+                            DELAY_REASON_LABELS[delayRow.delayReport.reason] ||
+                            delayRow.delayReport.reason
+                          }
+                        />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link to="/delays">Open the delays page</Link>
+            </section>
+          </div>
+
+          <section className="card page-section" aria-label="Live fleet map">
+            <h2 className="text-heading3">Live fleet</h2>
+            <p className="text-caption text-muted">
+              {plottedBuses.length} {plottedBuses.length === 1 ? 'bus is' : 'buses are'} reporting a
+              position · updated {lastRefreshedLabel}
+            </p>
+            <LiveMap buses={plottedBuses} routePaths={liveFleet?.routePaths || []} isCompact />
+            <ul className="live-map__legend">
+              {MAP_LEGEND.map((legendEntry) => (
+                <li key={legendEntry.liveStatus} className="live-map__legend-entry">
+                  <span
+                    className={`live-map__swatch live-map__bus live-map__bus--${legendEntry.liveStatus}`}
+                    aria-hidden="true"
+                  />
+                  {legendEntry.label}
+                </li>
+              ))}
+            </ul>
+            <Link to="/fleet">Open the live fleet page</Link>
+          </section>
+
+          {overview.openInquiryCount > 0 && (
+            <p className="form-notice">
+              <Link to="/inquiries">
+                {overview.openInquiryCount} open{' '}
+                {overview.openInquiryCount === 1 ? 'inquiry is' : 'inquiries are'} waiting for a
+                reply
+              </Link>
+            </p>
+          )}
+        </>
+      )}
     </>
   );
 }

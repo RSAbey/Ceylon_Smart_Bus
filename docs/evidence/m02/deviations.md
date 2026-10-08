@@ -16,7 +16,7 @@
 
 | Figma | Implemented | Reason |
 |---|---|---|
-| Buses on a street map | Buses plotted on a latitude/longitude chart drawn in SVG, over the stops of the routes being served | A street map needs a Google Maps (or other tile) key, and the repository ships no key and no map library for the web dashboard. The coordinates drawn are the real ones the drivers posted; only the streets are missing. The passenger and driver apps still use the real map, through `react-native-maps`. |
+| Buses on a street map | The same, on a real street map: Leaflet with OpenStreetMap tiles | Built first as a plain latitude/longitude plot because a street map was assumed to need a paid key. Leaflet with OpenStreetMap tiles needs no key and no account, so the dashboard now draws the real roads and the repository still ships no secret. Attribution is required by the tile policy and Leaflet prints it in the corner. |
 | Marker colour shows the service state | Marker shape as well: circle = on time, triangle = delayed, square = no signal, with a legend naming each | NFR-09: the state must not be carried by colour alone. |
 | Vehicle list | Same list, plus the driver's name and mobile number | Operations staff need to call the driver of a bus that has stopped reporting. Passengers still never see the driver (NFR-08). |
 | No write action on this screen | "Trips left running" strip with an End trip action | A driver app closed without ending its trip leaves the bus running forever and blocks that driver's next run, because a driver may hold only one ongoing trip. The action is refused by the server until the bus has been silent for 15 minutes, so a bus that is simply in a tunnel cannot be taken off the passenger map by mistake. |

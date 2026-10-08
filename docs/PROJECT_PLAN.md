@@ -137,7 +137,7 @@ Build Home's search + recent searches early, but wire **shortcuts, nearby buses 
 | Database | **MongoDB Atlas (free M0) + Mongoose** | Flexible schema for GPS pings & notifications, free hosted tier, indexes enforce the unique rules in the ERD |
 | Auth | **JWT + bcrypt**, role middleware (passenger/driver/admin) | Hashed + salted passwords, role-based access (NFR-07) |
 | Live tracking transport | **HTTP polling every 5 s** (driver posts location, passenger polls) | Meets "position ≤10 s old" (NFR-01); WebSockets do not work on Vercel serverless, so polling is the justified choice |
-| Admin web | **React (Vite) + React Router + Recharts**, CSS variables from design tokens | Same React skills as mobile; charts for Statistics-First dashboard |
+| Admin web | **React (Vite) + React Router**, CSS variables from design tokens; **Leaflet + OpenStreetMap tiles** for the fleet map | Same React skills as mobile. The charts are plain CSS bars, so no charting dependency was needed. Leaflet was added when the dashboard needed a real street map: it needs no API key and no account, unlike Google Maps, so the repository ships no secret (NFR-07) |
 | Hosting | **Vercel Hobby** — two projects from one repo (`admin/` and `server/`), Atlas for DB | Free, matches your decision; mobile APK needs a public API URL |
 | Build/Release | **EAS Build (`preview` profile → APK)**, upload to GitHub Releases | Deliverable: installable build |
 

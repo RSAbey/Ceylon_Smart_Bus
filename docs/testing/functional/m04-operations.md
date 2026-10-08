@@ -70,7 +70,7 @@
 
 | TC-ID | Feature | Preconditions | Steps | Expected result | Actual result | Pass/Fail | Requirement ID |
 |---|---|---|---|---|---|---|---|
-| TC-O01 | KPI cards | Seeded data | Admin → Overview | Eight cards with real counts, not placeholders | | | FR-10 |
+| TC-O01 | KPI cards | Seeded data | Admin → Overview | Six cards with real counts and a coloured edge, not placeholders | | | FR-10 |
 | TC-O02 | Needs attention | An active delay and an open inquiry | Open Overview | A "Needs attention" panel linking to Delays and Inquiries | | | FR-10 |
 | TC-O03 | Takings today | A fare paid today | Open Overview | "Collected today" matches the sum of today's paid fares | | | FR-10 |
 | TC-O04 | Performance charts | Tickets over several days | Admin → Performance | Three bar charts, each with seven columns and a figure above each bar | | | FR-10 |
@@ -78,6 +78,13 @@
 | TC-O06 | Busiest routes | Tickets on two routes | Look at the table | Routes ordered by tickets sold, with fares totalled | | | FR-10 |
 | TC-O07 | Punctuality | One delayed and one clean trip | Look at the on-time card | The percentage matches the trip counts shown beside it | | | FR-10 |
 | TC-O08 | Driver cannot open it | Signed in as a driver | Request `/api/admin/dashboard/overview` | 403 | | | NFR-08 |
+| TC-O09 | On-time chart | Trips over several days, some delayed | Open the dashboard | Seven columns of on-time percentage with the 80% target line drawn across them | | | FR-10 |
+| TC-O10 | The chart agrees with the delays | A day with one delayed trip out of four | Compare that column with the Delays page | The percentage matches the trips that ran against the ones reported late | | | FR-10, NFR-02 |
+| TC-O11 | Delay summary | Open delay reports exist | Look at the panel | Each one names its route, bus, driver, minutes and reason, and the link opens the Delays page | | | FR-08, FR-10 |
+| TC-O12 | Delay summary when clear | No open delay | Look at the panel | "No delay is open right now", not an empty box | | | FR-10 |
+| TC-O13 | Dashboard map | A driver is driving | Look at the live fleet panel | A street map with that bus on it and the time it was last updated | | | FR-02, FR-10 |
+| TC-O14 | No hamburger on desktop | Window wider than 900px | Look beside the page name in the top bar | No menu button; the sidebar is already on screen | | | NFR-10 |
+| TC-O15 | Hamburger on a narrow window | Window under 900px | Look at the top bar | The menu button is back and opens the sidebar | | | NFR-10 |
 
 ## Admin delays and notifications (A)
 
