@@ -6,6 +6,7 @@ Status: `planned` → `in progress` → `done`.
 ## Routes (`/api/routes`, `/api/admin/routes`)
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
+| PATCH | `/api/admin/routes/:routeId/fares` | admin | Reprice a route from the finance page. Body `{ baseFare?, perKmRate?, adjustPercent? }`; `adjustPercent` (−50 to 100) revises every stop fare on the route and rounds each to the rupee, which is what passengers are then charged. Returns the route, its stops and how many stop fares changed. | done |
 
 ## Buses (`/api/admin/buses`)
 | Method | Path | Role | Purpose | Status |

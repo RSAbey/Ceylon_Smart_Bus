@@ -14,32 +14,13 @@ const { TICKET_STATUSES } = require('../tickets/ticket.constants');
 const { PAYMENT_STATUSES } = require('../payments/payment.constants');
 const { DELAY_REPORT_STATUSES } = require('../delays/delay.constants');
 const { INQUIRY_STATUSES } = require('../inquiries/inquiry.constants');
+// Shared with the finance trend, so both pages cut their days at the same boundary.
+const { startOfDaysAgo, toDayKey } = require('../../utils/dayWindow');
 
-const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 /** How many days the Performance charts cover. */
 const PERFORMANCE_WINDOW_DAYS = 7;
 /** How many routes the "busiest routes" table lists. */
 const TOP_ROUTE_LIMIT = 5;
-
-/**
- * Midnight at the start of the day this many days ago, used as the lower bound of a chart window.
- * @param {number} daysAgo - How many days back to start.
- * @returns {Date} Start of that day.
- */
-function startOfDaysAgo(daysAgo) {
-  const startDate = new Date(Date.now() - daysAgo * MILLISECONDS_PER_DAY);
-  startDate.setHours(0, 0, 0, 0);
-  return startDate;
-}
-
-/**
- * Formats a date as YYYY-MM-DD, the key the charts group by.
- * @param {Date} dayDate - The day to label.
- * @returns {string} ISO date without the time.
- */
-function toDayKey(dayDate) {
-  return dayDate.toISOString().slice(0, 10);
-}
 
 /**
  * The KPI cards on the Overview page.

@@ -78,12 +78,38 @@ has started a trip so a bus is in service. Passenger account: `kasun.wijesinghe@
 | TC-I11 | Close an inquiry | A replied inquiry | Admin → Close | Status becomes Closed | | | FR-08 |
 | TC-I12 | Passenger cannot open the inbox | Signed in as a passenger | Request `GET /api/admin/inquiries` | 403 | | | NFR-08 |
 
+## Tickets & Finance, admin (F)
+
+| TC-ID | Feature | Preconditions | Steps | Expected result | Actual result | Pass/Fail | Requirement ID |
+|---|---|---|---|---|---|---|---|
+| TC-F01 | Takings load | Seeded payments exist | Open Tickets & Finance | Collected, refunded, average fare and failed payments are shown for the last 7 days | | | FR-10 |
+| TC-F02 | Period changes the figures | As TC-F01 | Press Today, then All time | Every figure, the fare table takings and the transaction list change with the period | | | FR-10 |
+| TC-F03 | Method split | Fares paid by card and by wallet exist | Look at "How passengers paid" | One line per method with its count and total, adding up to Collected | | | FR-10 |
+| TC-F04 | Takings trend | As TC-F01 | Look at the trend | Seven bars, oldest first, each labelled with its day and its amount in rupees | | | FR-10 |
+| TC-F05 | Fares by route | Routes exist | Look at the fare table | Every route is listed with its base fare, per-km rate, end-to-end fare, fares paid and takings, including routes that sold nothing | | | FR-10, NFR-10 |
+| TC-F06 | Fare revision preview | As TC-F05 | Press Adjust fares on a route, type 10 | The dialog says what the end-to-end fare becomes before anything is saved | | | NFR-10 |
+| TC-F07 | Fare revision saves | As TC-F06 | Press Save fares | A toast names how many stop fares were revised and the table shows the new end-to-end fare | | | NFR-10 |
+| TC-F08 | A revision reaches passengers | A route repriced by TC-F07 | Search that journey in the passenger app | The quoted fare is the revised one | | | FR-04, NFR-10 |
+| TC-F09 | A revision is bounded | As TC-F05 | Enter 500 in the revision field and save | Refused with a message naming the allowed range; fares are unchanged | | | NFR-10 |
+| TC-F10 | Refund is offered only where it applies | Paid and refunded transactions exist | Look at the transaction list | Refund appears on paid rows only | | | FR-05 |
+| TC-F11 | Refund explains itself | A paid fare on an active ticket | Press Refund | The dialog names the amount, the ticket, the passenger, where the money goes and what happens to the seat | | | FR-05, NFR-10 |
+| TC-F12 | Refund a wallet fare | A fare paid from the wallet on an active ticket | Confirm the refund, then open the passenger's wallet | The payment reads Refunded, the ticket is cancelled, the seat is free again and the wallet balance has risen by the fare | | | FR-05, FR-07 |
+| TC-F13 | The passenger is told | As TC-F12 | Open Alerts in the passenger app | A "Fare refunded" alert naming the ticket and the amount | | | FR-03, FR-07 |
+| TC-F14 | Refunding twice | An already refunded fare | Call the refund endpoint again | Refused with 409 | | | FR-05 |
+| TC-F15 | Status filter | Transactions of more than one status | Press Refunded | Only refunded transactions are listed, and no Refund buttons are offered | | | FR-10 |
+| TC-F16 | Wrong role | Signed in as a passenger or driver | Request `GET /api/admin/finance` | 403 | | | NFR-08 |
+| TC-F17 | API is unreachable | Stop the API | Open Tickets & Finance | The page shows one error state with a Retry button, not blank figures | | | NFR-10 |
+
 ## Development checks already run (not a substitute for the table above)
 
 The API behind these cases was exercised with a throwaway script against the development server and MongoDB Atlas on
 2026-10-07: **61 assertions, all passing**, covering booking, segment fares, the double-booking guard, ownership
 (403s), the unpaid and reused refusals, the tampered-signature refusal, refund-on-cancel, seat release, the inquiry
 edit window, the admin reply and the finance totals. The Android bundle also builds (`npx expo export`).
+
+A second script covered the finance screen on 2026-10-08: **50 assertions, all passing**, covering the period and
+status filters, the summary shape, a fare revision from the dialog through to the fare a passenger is quoted, and a
+refund through to the wallet balance, the cancelled ticket, the released seat and the passenger's alert.
 
 That is a developer check on localhost, **not** the device testing this table records. Every Actual / Pass-Fail cell
 above stays empty until the case is run on the APK and the hosted admin dashboard.

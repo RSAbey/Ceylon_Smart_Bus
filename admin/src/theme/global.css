@@ -1036,3 +1036,10 @@ a {
   background: var(--color-surface);
   color: var(--text-primary);
 }
+
+/* A heading, its explanation and the table or chart they introduce, kept together as one block. */
+.page-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}

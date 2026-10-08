@@ -34,7 +34,8 @@ ticket and one fare; see `docs/evidence/m03/erd-changes.md`.
 | POST | `/api/payments` | passenger | Pay a fare. Body `{ ticketId, method }`, plus `{ cardNumber, cardHolderName, cardExpiry, cardCvv }` when `method = card`. Creates the payment and a `payment` notification. Paying twice returns 409. | done |
 | GET | `/api/payments/wallet` | passenger | Wallet balance and the last 20 statement lines. | done |
 | POST | `/api/payments/wallet/topup` | passenger | Add money. Body `{ amount }` plus the four card fields. Rs. 100–10 000. | done |
-| GET | `/api/admin/finance` | admin | Totals collected and refunded, totals by method, and the last 20 transactions. | done |
+| GET | `/api/admin/finance?days=&status=` | admin | Takings for the period (`days` = 1, 7 or 30; omit for all time): collected, refunded and failed totals, the average fare, totals by method, the 7-day takings trend, every route with its fares and what it earned, and the last 20 transactions, optionally narrowed by payment `status`. | done |
+| POST | `/api/admin/finance/payments/:paymentId/refund` | admin | Refund one fare. Marks the payment `refunded`, cancels the ticket and releases its seat when the ticket is still active, credits a wallet payment back to the wallet, and tells the passenger. Refunding anything other than a paid fare returns 409. | done |
 
 **Payments are mocked.** No gateway is called. The demo card fields are checked for shape (16 digits, MM/YY, 3-digit
 CVV) so the checkout behaves like a real one, then **discarded** — `PAYMENT` stores only amount, method, status and

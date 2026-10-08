@@ -1,6 +1,5 @@
 // Performance page (Member 04, FR-10): how the service has run over the last week.
-// The charts are plain CSS bars rather than a charting library, so no extra dependency is added
-// for four simple series and the markup stays readable in a viva.
+// The charts come from the shared DailyBarChart, which Tickets & Finance draws its trend with too.
 import { useCallback, useEffect, useState } from 'react';
 import { Clock, TrendingUp } from 'lucide-react';
 import PageHeader from '../../components/layout/PageHeader';
@@ -8,52 +7,10 @@ import StatCard from '../../components/ui/StatCard';
 import DataTable from '../../components/ui/DataTable';
 import ErrorState from '../../components/ui/ErrorState';
 import Button from '../../components/ui/Button';
+import DailyBarChart from '../../components/ui/DailyBarChart';
 import { fetchPerformance } from '../overview/dashboardApi';
 
 const CURRENCY_PREFIX = 'Rs.';
-const PERCENT_SCALE = 100;
-
-/**
- * One bar chart drawn from a daily series.
- * @param {object} props - Component props.
- * @param {string} props.title - What the chart shows.
- * @param {object[]} props.dailySeries - Entries of { day, total }.
- * @param {string} [props.valuePrefix] - Prefix for the value, for example "Rs.".
- * @returns {import('react').JSX.Element} The chart.
- */
-function DailyBarChart({ title, dailySeries, valuePrefix = '' }) {
-  const highestTotal = Math.max(...dailySeries.map((dailyEntry) => dailyEntry.total), 1);
-
-  return (
-    <section className="card" aria-label={title}>
-      <h2 className="text-heading-3">{title}</h2>
-      <ol className="bar-chart">
-        {dailySeries.map((dailyEntry) => {
-          const barHeightPercent = Math.round((dailyEntry.total / highestTotal) * PERCENT_SCALE);
-          const dayLabel = new Date(dailyEntry.day).toLocaleDateString(undefined, {
-            weekday: 'short',
-          });
-          return (
-            <li key={dailyEntry.day} className="bar-chart__column">
-              {/* The figure is written above each bar, so the chart is readable without colour. */}
-              <span className="bar-chart__value text-caption">
-                {valuePrefix}
-                {dailyEntry.total}
-              </span>
-              <div
-                className="bar-chart__bar"
-                style={{ height: `${barHeightPercent}%` }}
-                role="img"
-                aria-label={`${dayLabel}: ${valuePrefix}${dailyEntry.total}`}
-              />
-              <span className="bar-chart__label text-caption text-muted">{dayLabel}</span>
-            </li>
-          );
-        })}
-      </ol>
-    </section>
-  );
-}
 
 /**
  * Admin performance reporting.

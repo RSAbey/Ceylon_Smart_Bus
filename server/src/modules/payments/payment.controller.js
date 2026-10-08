@@ -50,14 +50,29 @@ async function getShiftSummary(request, response) {
 }
 
 /**
- * GET /api/admin/finance - finance totals and recent transactions for the admin dashboard.
- * @param {import('express').Request} _request - Unused.
+ * GET /api/admin/finance?days=&status= - takings, fares and transactions for the admin dashboard.
+ * @param {import('express').Request} request - Express request.
  * @param {import('express').Response} response - Express response.
  * @returns {Promise<void>} Resolves when the response is sent.
  */
-async function getFinanceSummary(_request, response) {
-  const financeSummary = await paymentService.getFinanceSummary();
+async function getFinanceSummary(request, response) {
+  const financeSummary = await paymentService.getFinanceSummary({
+    // No days at all means "everything ever taken", which the page offers as All time.
+    periodDays: request.query.days ? Number(request.query.days) : null,
+    status: request.query.status,
+  });
   sendResponse(response, 'Finance summary loaded.', financeSummary);
+}
+
+/**
+ * POST /api/admin/finance/payments/:paymentId/refund - refunds a fare from the dashboard.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function refundPayment(request, response) {
+  const refundedPayment = await paymentService.refundPayment(request.params.paymentId);
+  sendResponse(response, 'Fare refunded.', { payment: refundedPayment });
 }
 
 module.exports = {
@@ -66,4 +81,5 @@ module.exports = {
   payForTicket: asyncHandler(payForTicket),
   getShiftSummary: asyncHandler(getShiftSummary),
   getFinanceSummary: asyncHandler(getFinanceSummary),
+  refundPayment: asyncHandler(refundPayment),
 };

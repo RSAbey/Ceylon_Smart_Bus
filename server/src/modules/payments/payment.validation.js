@@ -1,9 +1,11 @@
 // express-validator rules for fare payment and wallet top-up (Member 03).
 // Card fields are checked for shape so the demo behaves like a real checkout, then discarded by the
 // service: no card number, expiry or CVV is ever written to the database (NFR-07).
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const {
   PAYMENT_METHODS,
+  PAYMENT_STATUSES,
+  FINANCE_PERIOD_DAYS,
   MIN_TOPUP_AMOUNT,
   MAX_TOPUP_AMOUNT,
   CARD_NUMBER_DIGITS,
@@ -62,4 +64,20 @@ const topUpValidationRules = [
   ...buildCardDetailRules(true),
 ];
 
-module.exports = { payForTicketValidationRules, topUpValidationRules };
+/** The finance page may only ask for a period it offers, so an arbitrary scan cannot be requested. */
+const financeSummaryValidationRules = [
+  query('days')
+    .optional({ values: 'falsy' })
+    .isIn(FINANCE_PERIOD_DAYS.map(String))
+    .withMessage(`Choose a period of ${FINANCE_PERIOD_DAYS.join(', ')} days, or leave it out.`),
+  query('status')
+    .optional({ values: 'falsy' })
+    .isIn(Object.values(PAYMENT_STATUSES))
+    .withMessage(`Status must be one of: ${Object.values(PAYMENT_STATUSES).join(', ')}.`),
+];
+
+module.exports = {
+  payForTicketValidationRules,
+  topUpValidationRules,
+  financeSummaryValidationRules,
+};

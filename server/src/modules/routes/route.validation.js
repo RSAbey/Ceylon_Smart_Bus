@@ -1,6 +1,11 @@
 // express-validator rules for route management (Member 02).
 const { body } = require('express-validator');
-const { ROUTE_STATUSES, SERVICE_TIME_PATTERN } = require('./route.constants');
+const {
+  ROUTE_STATUSES,
+  SERVICE_TIME_PATTERN,
+  MIN_FARE_ADJUST_PERCENT,
+  MAX_FARE_ADJUST_PERCENT,
+} = require('./route.constants');
 
 const MIN_STOPS_PER_ROUTE = 2;
 const MIN_LATITUDE = -90;
@@ -88,4 +93,26 @@ const updateRouteValidationRules = [
     .withMessage('Every stop needs a fare from the first stop.'),
 ];
 
-module.exports = { createRouteValidationRules, updateRouteValidationRules };
+/**
+ * Repricing from the finance page. The percentage is bounded both ways so a slipped decimal point
+ * cannot wipe out every fare on a route or multiply it beyond anything a passenger would pay.
+ */
+const adjustRouteFaresValidationRules = [
+  body('baseFare').optional().isFloat({ min: 0 }).withMessage('Enter the base fare in rupees.'),
+  body('perKmRate')
+    .optional({ values: 'falsy' })
+    .isFloat({ min: 0 })
+    .withMessage('Enter the per-kilometre rate in rupees.'),
+  body('adjustPercent')
+    .optional({ values: 'falsy' })
+    .isFloat({ min: MIN_FARE_ADJUST_PERCENT, max: MAX_FARE_ADJUST_PERCENT })
+    .withMessage(
+      `A fare revision must be between ${MIN_FARE_ADJUST_PERCENT}% and ${MAX_FARE_ADJUST_PERCENT}%.`
+    ),
+];
+
+module.exports = {
+  createRouteValidationRules,
+  updateRouteValidationRules,
+  adjustRouteFaresValidationRules,
+};

@@ -99,6 +99,17 @@ async function updateRoute(request, response) {
 }
 
 /**
+ * PATCH /api/admin/routes/:routeId/fares — reprice a route from the finance page.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function adjustRouteFares(request, response) {
+  const repricedRoute = await routeService.adjustRouteFares(request.params.routeId, request.body);
+  sendResponse(response, 'Fares updated.', repricedRoute);
+}
+
+/**
  * DELETE /api/admin/routes/:routeId — delete a route and its stops.
  * @param {import('express').Request} request - Express request.
  * @param {import('express').Response} response - Express response.
@@ -117,5 +128,6 @@ module.exports = {
   getStopConnections: asyncHandler(getStopConnections),
   createRoute: asyncHandler(createRoute),
   updateRoute: asyncHandler(updateRoute),
+  adjustRouteFares: asyncHandler(adjustRouteFares),
   deleteRoute: asyncHandler(deleteRoute),
 };

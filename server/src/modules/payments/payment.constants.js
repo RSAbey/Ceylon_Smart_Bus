@@ -30,9 +30,24 @@ const TOPUP_PRESET_AMOUNTS = Object.freeze([500, 1000, 2000, 5000]);
 const CARD_NUMBER_DIGITS = 16;
 const CARD_CVV_DIGITS = 3;
 
+/** Periods the admin finance page totals over. Leaving the period out totals everything ever taken. */
+const FINANCE_PERIOD_DAYS = Object.freeze([1, 7, 30]);
+
+const DEFAULT_FINANCE_PERIOD_DAYS = 7;
+
+/** How many days the takings trend on the finance page covers, whatever period the totals use. */
+const FINANCE_TREND_DAYS = 7;
+
+/** How many transactions the admin finance page lists under the totals. */
+const RECENT_TRANSACTION_LIMIT = 20;
+
 module.exports = {
   PAYMENT_METHODS,
   PAYMENT_STATUSES,
+  FINANCE_PERIOD_DAYS,
+  DEFAULT_FINANCE_PERIOD_DAYS,
+  FINANCE_TREND_DAYS,
+  RECENT_TRANSACTION_LIMIT,
   WALLET_TRANSACTION_TYPES,
   MIN_TOPUP_AMOUNT,
   MAX_TOPUP_AMOUNT,

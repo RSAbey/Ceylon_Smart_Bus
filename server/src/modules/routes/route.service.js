@@ -12,6 +12,8 @@ const HTTP_STATUS = require('../../utils/httpStatus');
 
 const FIRST_STOP_SEQUENCE = 1;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+/** Divisor that turns a percentage fare revision into a multiplier. */
+const PERCENT_SCALE = 100;
 
 /**
  * Escapes user input so a search term cannot act as a regular expression.
@@ -324,6 +326,45 @@ async function updateRoute(routeId, routeChanges) {
 }
 
 /**
+ * Reprices a route from the admin finance page: the reference fares on the route, and optionally a
+ * percentage revision applied to every stop fare, which is how a real fare increase is announced.
+ * Stop fares are what a passenger is actually charged, so a revision has to reach them; tickets
+ * already sold keep the fare stored on them and are not repriced.
+ * @param {string} routeId - Route to reprice.
+ * @param {object} fareChanges - baseFare, perKmRate and/or adjustPercent.
+ * @returns {Promise<{route: object, stops: object[], adjustedStopCount: number}>} The repriced route.
+ */
+async function adjustRouteFares(routeId, fareChanges) {
+  const repricedRoute = await Route.findById(routeId);
+  if (!repricedRoute) {
+    throw new AppError('Route not found.', HTTP_STATUS.NOT_FOUND);
+  }
+
+  if (fareChanges.baseFare !== undefined) repricedRoute.baseFare = fareChanges.baseFare;
+  if (fareChanges.perKmRate !== undefined) repricedRoute.perKmRate = fareChanges.perKmRate;
+  await repricedRoute.save();
+
+  const orderedStops = await RouteStop.find({ routeId }).sort({ stopSequence: 1 });
+  let adjustedStopCount = 0;
+  if (fareChanges.adjustPercent) {
+    for (const routeStop of orderedStops) {
+      // Rounded to the rupee, because a conductor cannot give change in cents. The first stop is
+      // the origin at zero, so a percentage leaves it at zero by itself.
+      const revisedFare = Math.round(
+        routeStop.fareFromOrigin * (1 + fareChanges.adjustPercent / PERCENT_SCALE)
+      );
+      if (revisedFare !== routeStop.fareFromOrigin) {
+        routeStop.fareFromOrigin = revisedFare;
+        await routeStop.save();
+        adjustedStopCount += 1;
+      }
+    }
+  }
+
+  return { route: repricedRoute, stops: orderedStops, adjustedStopCount };
+}
+
+/**
  * Deletes a route, its stops and the bus assignments pointing at it (admin only).
  * A route with an ongoing trip is kept, because deleting it would strand passengers tracking that bus.
  * @param {string} routeId - Route to delete.
@@ -352,5 +393,6 @@ module.exports = {
   findRunningTripsOnRoute,
   createRoute,
   updateRoute,
+  adjustRouteFares,
   deleteRoute,
 };
