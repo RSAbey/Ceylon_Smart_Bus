@@ -1,7 +1,7 @@
 // Sidebar: brand, menu from config/navigationItems.js (active = Primary 100 bg + Primary 600 text), destructive Logout.
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, UserCog } from 'lucide-react';
 import { ADMIN_NAVIGATION_ITEMS } from '../../config/navigationItems';
 import { useAuth } from '../../context/AuthContext';
 import { ICON_SIZES } from '../../theme/iconSizes';
@@ -56,6 +56,10 @@ export default function Sidebar({ isOpen, onNavigate }) {
       </nav>
 
       <div className="sidebar__footer">
+        <NavLink to="/profile" className={getNavigationLinkClassName} onClick={onNavigate}>
+          <UserCog size={ICON_SIZES.medium} aria-hidden="true" />
+          My profile
+        </NavLink>
         <button type="button" className="sidebar__logout" onClick={() => setIsLogoutDialogOpen(true)}>
           <LogOut size={ICON_SIZES.medium} aria-hidden="true" />
           Logout

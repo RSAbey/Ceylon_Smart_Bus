@@ -17,6 +17,8 @@ const userAdminRouter = express.Router();
 userAdminRouter.use(authenticateToken, authorizeRoles(USER_ROLES.ADMIN));
 
 userAdminRouter.get('/', userController.listUsers);
+// Must sit above /:userId routes so "me" is never read as a user id.
+userAdminRouter.get('/me/activity', userController.getMyAdminActivity);
 // Must sit above /:userId routes so "passengers" is never read as a user id.
 userAdminRouter.get(
   '/passengers',

@@ -1,7 +1,7 @@
 // express-validator rules for the user endpoints (Member 01).
 const { body, param, query } = require('express-validator');
 const { USER_STATUSES } = require('./user.constants');
-const { SRI_LANKA_MOBILE_PATTERN } = require('../auth/auth.constants');
+const { SRI_LANKA_MOBILE_PATTERN, MIN_PASSWORD_LENGTH } = require('../auth/auth.constants');
 
 const updateMyProfileValidationRules = [
   body('fullName').optional().trim().notEmpty().withMessage('Enter your full name.'),
@@ -27,6 +27,13 @@ const setUserStatusValidationRules = [
 
 const MAX_SEARCH_LENGTH = 60;
 
+const changePasswordValidationRules = [
+  body('currentPassword').notEmpty().withMessage('Enter your current password.'),
+  body('newPassword')
+    .isLength({ min: MIN_PASSWORD_LENGTH })
+    .withMessage(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`),
+];
+
 const passengerListValidationRules = [
   query('status')
     .optional({ values: 'falsy' })
@@ -45,6 +52,7 @@ const passengerIdValidationRules = [
 
 module.exports = {
   updateMyProfileValidationRules,
+  changePasswordValidationRules,
   setUserStatusValidationRules,
   passengerListValidationRules,
   passengerIdValidationRules,

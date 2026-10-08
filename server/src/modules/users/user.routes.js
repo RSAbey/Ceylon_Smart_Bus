@@ -1,7 +1,10 @@
 // User endpoints mounted at /api/users (Member 01). Every route needs a signed-in user.
 const express = require('express');
 const userController = require('./user.controller');
-const { updateMyProfileValidationRules } = require('./user.validation');
+const {
+  updateMyProfileValidationRules,
+  changePasswordValidationRules,
+} = require('./user.validation');
 const authenticateToken = require('../../middleware/authenticateToken');
 const validateRequest = require('../../middleware/validateRequest');
 
@@ -11,6 +14,12 @@ userRouter.use(authenticateToken);
 
 userRouter.get('/me', userController.getMyProfile);
 userRouter.patch('/me', updateMyProfileValidationRules, validateRequest, userController.updateMyProfile);
+userRouter.patch(
+  '/me/password',
+  changePasswordValidationRules,
+  validateRequest,
+  userController.changeMyPassword
+);
 userRouter.delete('/me', userController.deleteMyAccount);
 
 module.exports = userRouter;

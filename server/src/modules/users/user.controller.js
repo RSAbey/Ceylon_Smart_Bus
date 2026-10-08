@@ -1,6 +1,7 @@
 // HTTP layer for users: reads the request, calls user.service, sends the envelope.
 const userService = require('./user.service');
 const passengerService = require('./passenger.service');
+const adminProfileService = require('./adminProfile.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const sendResponse = require('../../utils/sendResponse');
 
@@ -101,8 +102,35 @@ async function getPassenger(request, response) {
   sendResponse(response, 'Passenger loaded.', passengerProfile);
 }
 
+/**
+ * PATCH /api/users/me/password — changes the signed-in user's own password.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function changeMyPassword(request, response) {
+  await userService.changeMyPassword(request.user.userId, {
+    currentPassword: request.body.currentPassword,
+    newPassword: request.body.newPassword,
+  });
+  sendResponse(response, 'Password changed. Use it the next time you sign in.');
+}
+
+/**
+ * GET /api/admin/users/me/activity — what the signed-in administrator has done.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function getMyAdminActivity(request, response) {
+  const activity = await adminProfileService.getAdminActivity(request.user.userId);
+  sendResponse(response, 'Activity loaded.', activity);
+}
+
 module.exports = {
   getMyProfile: asyncHandler(getMyProfile),
+  changeMyPassword: asyncHandler(changeMyPassword),
+  getMyAdminActivity: asyncHandler(getMyAdminActivity),
   listPassengers: asyncHandler(listPassengers),
   getPassenger: asyncHandler(getPassenger),
   updateMyProfile: asyncHandler(updateMyProfile),

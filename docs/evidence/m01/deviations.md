@@ -64,3 +64,14 @@ than expanding the data model for rows that no requirement asks for.
 | Row menu with Edit and Delete | Open and Block / Unblock only | An administrator editing somebody's name or email silently is an account-takeover path, and deleting a passenger would orphan their tickets and payments. A passenger edits their own profile in the app and deletes their own account from it. |
 | (not in the design) | Blocking warns when the passenger holds active tickets | Blocking stops them signing in but does not cancel a ticket, and a ticket already cached on their phone still shows offline (NFR-04). The dialog says so, with the number, so the administrator refunds it first if that is what they meant. |
 | (not in the design) | A passenger with an unanswered inquiry is named as waiting | The same person is often on the phone about that inquiry; the figure is also a prompt that somebody is owed an answer. Named in words, not carried by colour (NFR-09). |
+
+## Admin My Profile page
+
+| Figma | Implemented | Reason |
+|---|---|---|
+| Profile card with an avatar photo | Initials in a circle, the role, the contact details and the join date | Nothing uploads or stores an avatar image; `USER.avatarUrl` exists but no screen sets it, so initials are what the data can honestly draw. |
+| "Change password" | The same, asking for the current password as well as the new one twice | Until now nothing in the system could change a password at all. Asking for the current one means a session left open on a shared computer cannot be used to lock the owner out of their own account (NFR-07). |
+| (not in the design) | A wrong current password returns 422 with a field error, not 401 | The dashboard signs itself out on any 401. Returning one here would throw the administrator out of the dashboard for a typo. |
+| Activity or statistics panel | Three counted figures: notifications they published, replies they wrote, inquiries still assigned to them | These are the only three things the data model can attribute to one administrator. Anything else on that panel would have been invented. |
+| Delete account | Not offered | The server already refuses to delete an admin account, and an administrator deleting themselves would leave the dashboard with one fewer way in. Blocking and unblocking are done by another administrator from Passengers or Transport Data. |
+| Profile reached from a menu | Reached from the signed-in name in the top bar and from "My profile" above Logout in the sidebar | Both are where people look; neither needs a new menu pattern. |

@@ -1,7 +1,10 @@
-// User business logic (Member 01): own profile read/update/delete, plus admin listing and blocking.
+// User business logic (Member 01): own profile read/update/delete, changing your own password,
+// plus admin listing and blocking.
+const bcrypt = require('bcryptjs');
 const User = require('./user.model');
 const DriverProfile = require('../drivers/driverProfile.model');
 const { USER_ROLES } = require('./user.constants');
+const { BCRYPT_SALT_ROUNDS } = require('../auth/auth.constants');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
@@ -137,8 +140,46 @@ async function setUserStatus(userId, newStatus, requestingAdminId) {
   return accountToChange;
 }
 
+/**
+ * Changes the signed-in user's own password (NFR-07). The current password has to be given and is
+ * checked against the stored hash, so a left-open session cannot be used to lock the owner out.
+ * @param {string} userId - Signed-in user.
+ * @param {object} passwordChange - The current and the new password.
+ * @param {string} passwordChange.currentPassword - What they sign in with now.
+ * @param {string} passwordChange.newPassword - What they want instead.
+ * @returns {Promise<void>} Resolves once the new password is stored.
+ */
+async function changeMyPassword(userId, { currentPassword, newPassword }) {
+  // passwordHash is select:false on the model, so it has to be asked for explicitly.
+  const accountToChange = await User.findById(userId).select('+passwordHash');
+  if (!accountToChange) {
+    throw new AppError('User not found.', HTTP_STATUS.NOT_FOUND);
+  }
+
+  const isCurrentPasswordCorrect = await bcrypt.compare(
+    currentPassword,
+    accountToChange.passwordHash
+  );
+  if (!isCurrentPasswordCorrect) {
+    // 422 rather than 401: the caller IS signed in, they have just mistyped. A 401 would log the
+    // dashboard out from under them for a typo.
+    throw new AppError('That is not your current password.', HTTP_STATUS.UNPROCESSABLE_ENTITY, [
+      { field: 'currentPassword', message: 'That is not your current password.' },
+    ]);
+  }
+  if (currentPassword === newPassword) {
+    throw new AppError('Choose a password you are not already using.', HTTP_STATUS.CONFLICT, [
+      { field: 'newPassword', message: 'Choose a password you are not already using.' },
+    ]);
+  }
+
+  accountToChange.passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+  await accountToChange.save();
+}
+
 module.exports = {
   getUserProfileById,
+  changeMyPassword,
   updateMyProfile,
   deleteMyAccount,
   listUsersForAdmin,

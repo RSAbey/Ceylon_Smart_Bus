@@ -11,6 +11,7 @@ import DelaysPage from './pages/delays/DelaysPage';
 import FinancePage from './pages/finance/FinancePage';
 import InquiriesPage from './pages/inquiries/InquiriesPage';
 import PassengersPage from './pages/passengers/PassengersPage';
+import AdminProfilePage from './pages/profile/AdminProfilePage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import PerformancePage from './pages/performance/PerformancePage';
 
@@ -38,6 +39,7 @@ const adminRouter = createBrowserRouter([
       { path: 'notifications', element: <NotificationsPage /> },
       { path: 'announcements', element: <Navigate to="/notifications" replace /> },
       { path: 'performance', element: <PerformancePage /> },
+      { path: 'profile', element: <AdminProfilePage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

@@ -56,6 +56,17 @@
 | TC-A48 | A driver is not a passenger | Note a driver's user id | Open `/api/admin/users/passengers/<that id>` | 404 Passenger not found | | | NFR-08 |
 | TC-A49 | Wrong role | Signed in as a passenger or driver | Request `GET /api/admin/users/passengers` | 403 | | | NFR-08 |
 | TC-A50 | Passengers empty state | No passenger matches the filter | Search for something no account matches | "No passengers match" with guidance to clear the filter, not an error | | | FR-01 |
+| TC-A51 | Open your own profile | Signed in as admin | Click your name in the top bar | My profile opens with your name, role, contact details and join date | | | FR-01 |
+| TC-A52 | Your activity | As TC-A51 | Look at the three figures | Notifications you published, replies you wrote and inquiries assigned to you, each matching what the Notifications and Inquiries pages show | | | FR-10 |
+| TC-A53 | Edit your own details (Update) | As TC-A51 | Change your name → Save details | A toast confirms and the name in the top bar changes without a reload | | | FR-01 |
+| TC-A54 | Details validation | As TC-A51 | Enter `12345` as the mobile → Save details | Inline error naming the Sri Lankan format; nothing is saved | | | FR-01 |
+| TC-A55 | Email already used | Another account uses that email | Enter it → Save details | Error against the email field | | | FR-01 |
+| TC-A56 | Passwords must match | As TC-A51 | Type two different new passwords → Change password | "Both new password boxes must match."; nothing is sent | | | NFR-07 |
+| TC-A57 | New password too short | As TC-A51 | Enter a 5-character new password | "Password must be at least 8 characters." | | | NFR-07 |
+| TC-A58 | Wrong current password | As TC-A51 | Enter the wrong current password with a valid new one | "That is not your current password." under that field, **and you stay signed in** | | | NFR-07 |
+| TC-A59 | Change your password (Update) | As TC-A51 | Enter the correct current password and a new one twice | A toast confirms; signing out and back in works with the new password and fails with the old one | | | NFR-07 |
+| TC-A60 | Same password refused | As TC-A51 | Enter your current password as the new one | Refused with a message telling you to choose a different one | | | NFR-07 |
+
 
 ## Development checks already run (not a substitute for the table above)
 
@@ -64,6 +75,12 @@ server and MongoDB Atlas on 2026-10-08: **40 assertions, all passing**, covering
 filters, the figures on each row against the passenger's own ticket and wallet screens, one
 passenger's record, and blocking through to the refused sign-in, the refused existing session, the
 self-block refusal and the restore.
+
+A second script covered the administrator's own profile on 2026-10-08: **30 assertions, all
+passing**, covering the activity figures against the Notifications and Inquiries data, editing and
+restoring the account's own details, and the whole password path — the refusals for a missing,
+short, wrong or unchanged password, the successful change, the old password no longer working, and
+the seeded password put back at the end.
 
 That is a developer check on localhost, **not** the device testing this table records. Every Actual
 and Pass/Fail cell above stays empty until the case is run on the APK and the hosted dashboard.

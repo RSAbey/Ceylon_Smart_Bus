@@ -31,12 +31,14 @@ Wrong code → `400` `"Invalid confirmation code. Remaining attempts: N"`. After
 |---|---|---|---|---|
 | GET | `/api/users/me` | any signed-in | Current user's profile | done |
 | PATCH | `/api/users/me` | any signed-in | Update name, email, mobile, avatar | done |
+| PATCH | `/api/users/me/password` | any signed-in | Change your own password. Body `{ currentPassword, newPassword }`. The current password is checked against the stored hash; a wrong one returns **422 with a field error**, not 401, so a typo does not sign the caller out. Reusing the same password returns 409. | done |
 | DELETE | `/api/users/me` | passenger, driver | Delete own account (admins are refused) | done |
 
 ## Admin accounts (`/api/admin/users`) — admin only
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
 | GET | `/api/admin/users?role=&status=&search=&page=&pageSize=` | admin | Paged account list | done |
+| GET | `/api/admin/users/me/activity` | admin | What the signed-in administrator has done: notifications they published, replies they wrote, and inquiries assigned to them that are not closed. | done |
 | GET | `/api/admin/users/passengers?status=&search=` | admin | The passenger roster for the Passengers page: each account with its ticket count, active tickets, last ticket, wallet balance and open inquiries, plus the counts above the table (total, active, blocked, new in the last 7 days). Search matches name, email or mobile. | done |
 | GET | `/api/admin/users/passengers/:userId` | admin | One passenger's record: the account, fares paid, wallet balance, saved routes, their five latest tickets and any inquiry still open. 404 for an account that is not a passenger. | done |
 | PATCH | `/api/admin/users/:userId/status` | admin | Block or unblock (cannot target yourself) | done |
