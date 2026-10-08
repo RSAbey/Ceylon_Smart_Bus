@@ -53,7 +53,8 @@ delay alerts. `reason = other` requires `reasonNote`, enforced in the model and 
 ## Announcements (`/api/admin/announcements`)
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
-| GET | `/api/admin/announcements` | admin | Every announcement with author and target route. `?status=` and `?severity=` filter. | done |
+| GET | `/api/admin/announcements` | admin | Every announcement with its author, target route and what it delivered (alerts created and how many have been read), plus the counts above the table (draft, published, archived, alerts delivered, alerts read). `?status=` and `?severity=` filter the list, never the counts. | done |
+| GET | `/api/admin/announcements/audience?targetRouteId=` | admin | How many distinct passengers a message would reach if it were sent now: every active passenger, or the followers of one route. Shown in the composer and in the send confirmation before anything goes out. | done |
 | POST | `/api/admin/announcements` | admin | Write a draft. Body `{ title, message, severity?, targetRouteId?, expiresAt? }`. | done |
 | PATCH | `/api/admin/announcements/:announcementId` | admin | Edit a draft. A published one returns 409. | done |
 | PATCH | `/api/admin/announcements/:announcementId/publish` | admin | **The moment passengers are notified.** Returns `notifiedCount`. | done |

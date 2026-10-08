@@ -21,6 +21,6 @@ export const ADMIN_NAVIGATION_ITEMS = Object.freeze([
   { key: 'finance', label: 'Tickets & Finance', path: '/finance', icon: Wallet },
   { key: 'inquiries', label: 'Inquiries', path: '/inquiries', icon: MessageSquare },
   { key: 'passengers', label: 'Passengers', path: '/passengers', icon: UserRound },
-  { key: 'announcements', label: 'Announcements', path: '/announcements', icon: Megaphone },
+  { key: 'notifications', label: 'Notifications', path: '/notifications', icon: Megaphone },
   { key: 'performance', label: 'Performance', path: '/performance', icon: ChartColumn },
 ]);

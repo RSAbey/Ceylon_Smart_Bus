@@ -42,3 +42,13 @@ off-screen: the route form's Save button could not be reached at all. Fixed in t
 
 Verified in a browser at 1440x900 and 1024x700: the body scrolls, the footer stays put, and the
 stop Details panel expands without breaking the layout.
+
+## Admin Notifications page (was Announcements)
+
+| Figma | Implemented | Reason |
+|---|---|---|
+| Page titled "Notifications" | The page is Notifications; the rows are still `ANNOUNCEMENT` records | What an administrator writes is one record; what passengers receive is one `NOTIFICATION` each. The page is named for the job it does, and the file header says which entity it edits so the ERD still reads straight. `/announcements` redirects, so an old bookmark still works. |
+| A sent / not sent flag | Alerts delivered and alerts read, counted from the `NOTIFICATION` rows the announcement created | "Published" only says what was intended. Counting the rows says what passengers actually received, and how many opened it — which is the figure that tells you whether the message landed. |
+| (not in the design) | The composer and the send confirmation say how many passengers the message will reach | "All passengers" is not a number. Counting the audience before anything is sent is the difference between telling 3 people and telling nobody, and it is the same count the publish step then uses. |
+| Every row offers Publish, Edit, Archive, Delete | Each action appears only where the server would accept it | A sent notification cannot be edited or deleted because its alerts are already in people's feeds. Offering a button that can only fail is worse than not offering it. |
+| Message typed into a single-line box | A five-row textarea | The field holds up to 1000 characters; a one-line input hid all but the end of it while writing. |

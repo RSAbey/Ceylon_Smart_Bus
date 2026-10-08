@@ -1,18 +1,18 @@
-// Announcement form (Member 04): used for both writing a new draft and editing an existing one.
-import { useState } from 'react';
+// Notification composer (Member 04): writes the ANNOUNCEMENT that becomes an alert in every
+// targeted passenger's app once it is published. Used for a new draft and for editing one.
+import { useEffect, useState } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
-
-const MAX_TITLE_LENGTH = 120;
-const MIN_MESSAGE_LENGTH = 10;
-const MAX_MESSAGE_LENGTH = 1000;
-
-const SEVERITY_OPTIONS = Object.freeze([
-  { severity: 'info', label: 'Info' },
-  { severity: 'warning', label: 'Warning' },
-  { severity: 'critical', label: 'Critical' },
-]);
+import { fetchAudienceSize } from './notificationApi';
+import {
+  MAX_MESSAGE_LENGTH,
+  MAX_TITLE_LENGTH,
+  MESSAGE_ROW_COUNT,
+  MIN_MESSAGE_LENGTH,
+  NOTIFICATION_MESSAGES,
+  SEVERITY_OPTIONS,
+} from './notificationConstants';
 
 /**
  * Builds the starting form values, either empty or from the announcement being edited.
@@ -23,13 +23,13 @@ function buildInitialForm(announcementBeingEdited) {
   return {
     title: announcementBeingEdited?.title || '',
     message: announcementBeingEdited?.message || '',
-    severity: announcementBeingEdited?.severity || 'info',
+    severity: announcementBeingEdited?.severity || SEVERITY_OPTIONS[0].severity,
     targetRouteId: announcementBeingEdited?.targetRouteId?.id || '',
   };
 }
 
 /**
- * The announcement form dialog.
+ * The composer dialog.
  * @param {object} props - Component props.
  * @param {boolean} props.isOpen - Whether the dialog is shown.
  * @param {object | null} props.announcementBeingEdited - Draft being edited, or null for a new one.
@@ -40,7 +40,7 @@ function buildInitialForm(announcementBeingEdited) {
  * @param {Function} props.onClose - Called when the dialog is dismissed.
  * @returns {import('react').JSX.Element} The dialog.
  */
-export default function AnnouncementFormModal({
+export default function NotificationComposerModal({
   isOpen,
   announcementBeingEdited,
   routeOptions,
@@ -54,6 +54,23 @@ export default function AnnouncementFormModal({
     buildInitialForm(announcementBeingEdited)
   );
   const [localFieldErrors, setLocalFieldErrors] = useState({});
+  const [audienceCount, setAudienceCount] = useState(null);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let isEffectActive = true;
+    fetchAudienceSize(announcementForm.targetRouteId)
+      .then((countedAudience) => {
+        if (isEffectActive) setAudienceCount(countedAudience);
+      })
+      .catch(() => {
+        // Better to say nothing than to promise a number the server could not work out.
+        if (isEffectActive) setAudienceCount(null);
+      });
+    return () => {
+      isEffectActive = false;
+    };
+  }, [isOpen, announcementForm.targetRouteId]);
 
   /**
    * Updates one field without disturbing the others.
@@ -98,7 +115,7 @@ export default function AnnouncementFormModal({
   return (
     <Modal
       isOpen={isOpen}
-      title={announcementBeingEdited ? 'Edit draft' : 'Write announcement'}
+      title={announcementBeingEdited ? 'Edit draft' : NOTIFICATION_MESSAGES.composeLabel}
       onClose={onClose}
       size="wide"
       footer={
@@ -123,50 +140,61 @@ export default function AnnouncementFormModal({
         onFieldTextChange={(fieldText) => changeField('message', fieldText)}
         errorText={fieldErrors.message}
         helperText={`${announcementForm.message.trim().length} of ${MAX_MESSAGE_LENGTH} characters.`}
+        rowCount={MESSAGE_ROW_COUNT}
       />
 
-      <div className="form-field">
-        <label className="text-label" htmlFor="announcementSeverity">
-          Severity
-        </label>
-        <select
-          id="announcementSeverity"
-          className="form-field__input"
-          value={announcementForm.severity}
-          onChange={(changeEvent) => changeField('severity', changeEvent.target.value)}
-        >
-          {SEVERITY_OPTIONS.map((severityOption) => (
-            <option key={severityOption.severity} value={severityOption.severity}>
-              {severityOption.label}
-            </option>
-          ))}
-        </select>
-        <p className="text-caption text-muted">
-          Critical is for disruption that stops people travelling.
-        </p>
+      <div className="form-grid">
+        <div className="form-field">
+          <label className="text-label" htmlFor="announcementSeverity">
+            Severity
+          </label>
+          <select
+            id="announcementSeverity"
+            className="form-field__input"
+            value={announcementForm.severity}
+            onChange={(changeEvent) => changeField('severity', changeEvent.target.value)}
+          >
+            {SEVERITY_OPTIONS.map((severityOption) => (
+              <option key={severityOption.severity} value={severityOption.severity}>
+                {severityOption.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-caption text-muted">
+            Critical is for disruption that stops people travelling.
+          </p>
+        </div>
+
+        <div className="form-field">
+          <label className="text-label" htmlFor="announcementRoute">
+            Who gets it
+          </label>
+          <select
+            id="announcementRoute"
+            className="form-field__input"
+            value={announcementForm.targetRouteId}
+            onChange={(changeEvent) => changeField('targetRouteId', changeEvent.target.value)}
+          >
+            <option value="">All passengers</option>
+            {routeOptions.map((routeOption) => (
+              <option key={routeOption.id} value={routeOption.id}>
+                Route {routeOption.routeNumber} ({routeOption.origin} to {routeOption.destination})
+              </option>
+            ))}
+          </select>
+          <p className="text-caption text-muted">
+            A route sends it only to passengers who saved or follow that route.
+          </p>
+        </div>
       </div>
 
-      <div className="form-field">
-        <label className="text-label" htmlFor="announcementRoute">
-          Who gets it
-        </label>
-        <select
-          id="announcementRoute"
-          className="form-field__input"
-          value={announcementForm.targetRouteId}
-          onChange={(changeEvent) => changeField('targetRouteId', changeEvent.target.value)}
-        >
-          <option value="">All passengers</option>
-          {routeOptions.map((routeOption) => (
-            <option key={routeOption.id} value={routeOption.id}>
-              Route {routeOption.routeNumber} ({routeOption.origin} to {routeOption.destination})
-            </option>
-          ))}
-        </select>
-        <p className="text-caption text-muted">
-          A route sends it only to passengers who saved or follow that route.
+      {audienceCount !== null && (
+        <p className="form-notice">
+          As things stand this would reach {audienceCount}{' '}
+          {audienceCount === 1 ? 'passenger' : 'passengers'}. Saving only keeps the draft; nobody is
+          told until you publish it.
         </p>
-      </div>
+      )}
     </Modal>
   );
 }

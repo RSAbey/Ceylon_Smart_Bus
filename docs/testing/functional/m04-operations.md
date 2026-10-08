@@ -79,7 +79,7 @@
 | TC-O07 | Punctuality | One delayed and one clean trip | Look at the on-time card | The percentage matches the trip counts shown beside it | | | FR-10 |
 | TC-O08 | Driver cannot open it | Signed in as a driver | Request `/api/admin/dashboard/overview` | 403 | | | NFR-08 |
 
-## Admin delays and announcements (A)
+## Admin delays and notifications (A)
 
 | TC-ID | Feature | Preconditions | Steps | Expected result | Actual result | Pass/Fail | Requirement ID |
 |---|---|---|---|---|---|---|---|
@@ -95,8 +95,21 @@
 | TC-A10 | Published cannot be deleted | A published announcement | Try to delete it | 409 telling you to archive instead | | | FR-10 |
 | TC-A11 | Archive | A published announcement | Archive it | Status becomes Archived; passenger alerts already sent are untouched | | | FR-10 |
 | TC-A12 | Passenger cannot broadcast | Signed in as a passenger | POST `/api/admin/announcements` | 403 | | | NFR-08 |
+| TC-A13 | Audience before sending | Composer open | Look at the notice under the form, then switch the target from All passengers to a route | It names how many passengers the message would reach, and the figure changes with the target | | | FR-10 |
+| TC-A14 | The send dialog names the audience | A draft | Press Send | The confirmation says how many passengers get an alert, and that it cannot be taken back | | | FR-10 |
+| TC-A15 | What was delivered | A sent notification | Look at its row | It shows how many alerts were created and how many have been read, with the date | | | FR-10 |
+| TC-A16 | Read figures follow the app | A sent notification with an unread alert | Open that alert in the passenger app, then reload the page | The read figure rises by one | | | FR-03, FR-10 |
+| TC-A17 | Actions match the state | A draft, a sent and an archived notification | Look at each row | Draft offers Send, Edit and Delete; sent offers Archive only; archived offers nothing | | | FR-10, NFR-10 |
+| TC-A18 | Counts over everything | Notifications in more than one state | Press the Drafts chip | The table narrows but the four figures above still describe every notification | | | FR-10 |
+| TC-A19 | Old link still works | Signed in as admin | Open `/announcements` in the browser | The dashboard lands on Notifications | | | NFR-10 |
 
 ## Development checks already run (not a substitute for the table above)
+
+The notification screen was exercised with a throwaway script against the development server and
+MongoDB Atlas on 2026-10-08: **33 assertions, all passing**, covering the audience count against the
+passenger roster, writing and editing a draft, publishing through to the alert arriving in the
+passenger's own feed with the edited wording, the delivered and read figures, the refusals to edit,
+delete or send twice, the status filter and archiving.
 
 The API behind these cases was exercised with a throwaway script against the development server and
 MongoDB Atlas on 2026-10-07: **64 assertions, all passing**, covering the subscription lifecycle, the
