@@ -10,6 +10,7 @@ import TransportDataPage from './pages/transport/TransportDataPage';
 import DelaysPage from './pages/delays/DelaysPage';
 import FinancePage from './pages/finance/FinancePage';
 import InquiriesPage from './pages/inquiries/InquiriesPage';
+import PassengersPage from './pages/passengers/PassengersPage';
 import AnnouncementsPage from './pages/announcements/AnnouncementsPage';
 import PerformancePage from './pages/performance/PerformancePage';
 
@@ -33,6 +34,7 @@ const adminRouter = createBrowserRouter([
       { path: 'delays', element: <DelaysPage /> },
       { path: 'finance', element: <FinancePage /> },
       { path: 'inquiries', element: <InquiriesPage /> },
+      { path: 'passengers', element: <PassengersPage /> },
       { path: 'announcements', element: <AnnouncementsPage /> },
       { path: 'performance', element: <PerformancePage /> },
     ],

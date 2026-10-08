@@ -1086,3 +1086,24 @@ a {
   flex: 1 1 200px;
   max-width: 280px;
 }
+
+/* A short list of records inside a dialog — a passenger's last tickets, their open inquiries. */
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.record-list__entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-md);
+}

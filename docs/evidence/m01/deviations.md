@@ -55,3 +55,12 @@ direct sign-in. Options: accept and document it, or add `isMobileVerified` to `U
 
 Agreed with the team on 2026-10-07: build the Profile screen from data the ERD already holds rather
 than expanding the data model for rows that no requirement asks for.
+
+## Admin Passengers page
+
+| Figma | Implemented | Reason |
+|---|---|---|
+| A list of names | The same list with tickets bought, active tickets, wallet balance and anything they are waiting to hear about | A support call starts with "what has this person actually done?". A roster of names alone cannot answer it, and every figure here is counted from real rows. |
+| Row menu with Edit and Delete | Open and Block / Unblock only | An administrator editing somebody's name or email silently is an account-takeover path, and deleting a passenger would orphan their tickets and payments. A passenger edits their own profile in the app and deletes their own account from it. |
+| (not in the design) | Blocking warns when the passenger holds active tickets | Blocking stops them signing in but does not cancel a ticket, and a ticket already cached on their phone still shows offline (NFR-04). The dialog says so, with the number, so the administrator refunds it first if that is what they meant. |
+| (not in the design) | A passenger with an unanswered inquiry is named as waiting | The same person is often on the phone about that inquiry; the figure is also a prompt that somebody is owed an answer. Named in words, not carried by colour (NFR-09). |

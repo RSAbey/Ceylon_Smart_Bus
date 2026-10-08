@@ -1,7 +1,11 @@
 // Admin account management mounted at /api/admin/users (admin only) — Member 01.
 const express = require('express');
 const userController = require('./user.controller');
-const { setUserStatusValidationRules } = require('./user.validation');
+const {
+  setUserStatusValidationRules,
+  passengerListValidationRules,
+  passengerIdValidationRules,
+} = require('./user.validation');
 const authenticateToken = require('../../middleware/authenticateToken');
 const authorizeRoles = require('../../middleware/authorizeRoles');
 const validateRequest = require('../../middleware/validateRequest');
@@ -13,6 +17,19 @@ const userAdminRouter = express.Router();
 userAdminRouter.use(authenticateToken, authorizeRoles(USER_ROLES.ADMIN));
 
 userAdminRouter.get('/', userController.listUsers);
+// Must sit above /:userId routes so "passengers" is never read as a user id.
+userAdminRouter.get(
+  '/passengers',
+  passengerListValidationRules,
+  validateRequest,
+  userController.listPassengers
+);
+userAdminRouter.get(
+  '/passengers/:userId',
+  passengerIdValidationRules,
+  validateRequest,
+  userController.getPassenger
+);
 userAdminRouter.patch(
   '/:userId/status',
   setUserStatusValidationRules,

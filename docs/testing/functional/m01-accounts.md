@@ -43,3 +43,27 @@
 | TC-A35 | Admin cannot block themselves | Signed in as admin | Attempt to block your own account | The action is refused with a clear message | | | NFR-07 |
 | TC-A36 | Drivers list empty state | No drivers registered | Open the Drivers page | "No drivers registered yet" with guidance to register the first driver | | | FR-01 |
 | TC-A37 | Drivers list error state | API stopped | Open the Drivers page | An error message with a working "Try again" button is shown | | | FR-01 |
+| TC-A38 | Passenger roster (Read) | Passengers exist | Open the Passengers page | Each passenger is listed with contact details, when they joined, tickets bought and active, wallet balance, open inquiries and account status | | | FR-01, FR-10 |
+| TC-A39 | Roster counts | As TC-A38 | Look above the table | Passengers, Active, Blocked and New this week are shown, and Active plus Blocked equals the total | | | FR-10 |
+| TC-A40 | Search a passenger | As TC-A38 | Search part of a name, email or mobile number | Only matching passengers are listed, and the four counts still describe everyone | | | FR-01 |
+| TC-A41 | Status filter | A blocked passenger exists | Press Blocked | Only blocked accounts are listed | | | FR-01 |
+| TC-A42 | Open a passenger record | As TC-A38 | Press Open on a row | Their contact details, tickets bought, fares paid, wallet balance, saved routes, latest five tickets and open inquiries are shown | | | FR-01, FR-10 |
+| TC-A43 | Figures match the app | A passenger with tickets and a wallet | Compare the record with that passenger's own My Tickets and Wallet screens | The ticket count and balance are the same on both sides | | | FR-10 |
+| TC-A44 | Block warns about tickets | A passenger holding an active ticket | Press Block account | The dialog says how many active tickets they hold and that blocking does not cancel them | | | NFR-04, NFR-07 |
+| TC-A45 | Block a passenger (Update) | An active passenger | Confirm the block | A toast confirms, the badge reads Blocked, the Blocked count rises, and that passenger can no longer sign in to the app | | | NFR-07 |
+| TC-A46 | A blocked session stops working | TC-A45 done while that passenger is signed in on a phone | Use the app | The next request is refused, even though the token has not expired | | | NFR-07 |
+| TC-A47 | Unblock (Update) | A blocked passenger | Press Unblock account and confirm | The badge returns to Active and they can sign in again | | | NFR-07 |
+| TC-A48 | A driver is not a passenger | Note a driver's user id | Open `/api/admin/users/passengers/<that id>` | 404 Passenger not found | | | NFR-08 |
+| TC-A49 | Wrong role | Signed in as a passenger or driver | Request `GET /api/admin/users/passengers` | 403 | | | NFR-08 |
+| TC-A50 | Passengers empty state | No passenger matches the filter | Search for something no account matches | "No passengers match" with guidance to clear the filter, not an error | | | FR-01 |
+
+## Development checks already run (not a substitute for the table above)
+
+The passenger roster and blocking were exercised with a throwaway script against the development
+server and MongoDB Atlas on 2026-10-08: **40 assertions, all passing**, covering the roster and its
+filters, the figures on each row against the passenger's own ticket and wallet screens, one
+passenger's record, and blocking through to the refused sign-in, the refused existing session, the
+self-block refusal and the restore.
+
+That is a developer check on localhost, **not** the device testing this table records. Every Actual
+and Pass/Fail cell above stays empty until the case is run on the APK and the hosted dashboard.

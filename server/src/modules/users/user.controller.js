@@ -1,5 +1,6 @@
 // HTTP layer for users: reads the request, calls user.service, sends the envelope.
 const userService = require('./user.service');
+const passengerService = require('./passenger.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const sendResponse = require('../../utils/sendResponse');
 
@@ -75,8 +76,35 @@ async function setUserStatus(request, response) {
   sendResponse(response, 'Account status updated.', updatedAccount);
 }
 
+/**
+ * GET /api/admin/users/passengers?status=&search= — the passenger roster with what each has done.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function listPassengers(request, response) {
+  const passengerList = await passengerService.listPassengersForAdmin({
+    status: request.query.status,
+    searchText: request.query.search,
+  });
+  sendResponse(response, 'Passengers loaded.', passengerList);
+}
+
+/**
+ * GET /api/admin/users/passengers/:userId — one passenger's record for the support screen.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function getPassenger(request, response) {
+  const passengerProfile = await passengerService.getPassengerForAdmin(request.params.userId);
+  sendResponse(response, 'Passenger loaded.', passengerProfile);
+}
+
 module.exports = {
   getMyProfile: asyncHandler(getMyProfile),
+  listPassengers: asyncHandler(listPassengers),
+  getPassenger: asyncHandler(getPassenger),
   updateMyProfile: asyncHandler(updateMyProfile),
   deleteMyAccount: asyncHandler(deleteMyAccount),
   listUsers: asyncHandler(listUsers),

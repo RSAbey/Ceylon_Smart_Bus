@@ -1,5 +1,5 @@
 // express-validator rules for the user endpoints (Member 01).
-const { body } = require('express-validator');
+const { body, param, query } = require('express-validator');
 const { USER_STATUSES } = require('./user.constants');
 const { SRI_LANKA_MOBILE_PATTERN } = require('../auth/auth.constants');
 
@@ -25,4 +25,27 @@ const setUserStatusValidationRules = [
     .withMessage(`Status must be one of: ${Object.values(USER_STATUSES).join(', ')}.`),
 ];
 
-module.exports = { updateMyProfileValidationRules, setUserStatusValidationRules };
+const MAX_SEARCH_LENGTH = 60;
+
+const passengerListValidationRules = [
+  query('status')
+    .optional({ values: 'falsy' })
+    .isIn(Object.values(USER_STATUSES))
+    .withMessage(`Status must be one of: ${Object.values(USER_STATUSES).join(', ')}.`),
+  query('search')
+    .optional({ values: 'falsy' })
+    .trim()
+    .isLength({ max: MAX_SEARCH_LENGTH })
+    .withMessage(`Keep the search under ${MAX_SEARCH_LENGTH} characters.`),
+];
+
+const passengerIdValidationRules = [
+  param('userId').isMongoId().withMessage('Passenger not found.'),
+];
+
+module.exports = {
+  updateMyProfileValidationRules,
+  setUserStatusValidationRules,
+  passengerListValidationRules,
+  passengerIdValidationRules,
+};
