@@ -72,6 +72,8 @@
 | TC-A64 | Wrong password | On the sign-in page | Enter a correct email with a wrong password | A banner carries the server's message and the page stays put | | | FR-01, NFR-07 |
 | TC-A65 | Reveal the password | On the sign-in page | Type a password and press the eye | The characters become readable and the button changes to Hide password | | | NFR-10 |
 | TC-A66 | Sign in returns you where you were | Signed out, open `/fleet` | Sign in | The dashboard lands on Live Fleet, not Overview | | | FR-01 |
+| TC-A67 | Driver edits their own details | Signed in as a driver | Profile → Edit profile | The edit screen opens and saves; it does not bounce back to the driver home | | | FR-01 |
+| TC-A68 | Driver opens Terms and Privacy | Signed in as a driver | Profile → Terms of Service, then Privacy Policy | Each screen opens (placeholder content is fine); neither bounces back to Home | | | FR-01 |
 
 
 ## Development checks already run (not a substitute for the table above)

@@ -1,7 +1,7 @@
 // My Routes (driver app): the route this driver's bus is assigned to, with its stops in order.
 // A driver drives one assigned bus, so this is normally a single card rather than a long list.
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
@@ -143,10 +143,8 @@ export default function DriverRoutesScreen() {
           {stops.map((routeStop, stopIndex) => {
             const isLastStop = stopIndex === stops.length - 1;
             return (
-              <Pressable
+              <View
                 key={routeStop.id}
-                onPress={() => router.push(`/(passenger)/route-details/${route.id}`)}
-                accessibilityRole="button"
                 accessibilityLabel={`Stop ${routeStop.stopSequence}, ${routeStop.stopName}`}
                 style={styles.stopRow}
               >
@@ -161,7 +159,7 @@ export default function DriverRoutesScreen() {
                     {isLastStop ? ' · Terminus' : ''}
                   </Text>
                 </View>
-              </Pressable>
+              </View>
             );
           })}
         </AppCard>

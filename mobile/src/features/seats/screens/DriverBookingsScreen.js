@@ -214,7 +214,7 @@ export default function DriverBookingsScreen() {
         variant="outline"
         isFullWidth
         iconName="grid-outline"
-        onPress={() => router.push(`/(passenger)/seat-selection/${bookingOverview.tripId}`)}
+        onPress={() => router.push(`/(driver)/seat-map/${bookingOverview.tripId}`)}
       />
     </ScreenContainer>
   );

@@ -156,7 +156,7 @@ export default function DriverProfileScreen() {
           iconName="person-outline"
           label="Personal information"
           hint={`${account?.email} · ${account?.mobile}`}
-          onPress={() => router.push('/(passenger)/edit-profile')}
+          onPress={() => router.push('/(driver)/edit-profile')}
         />
         <View style={styles.rowDivider} />
         <SettingsRow
@@ -228,14 +228,14 @@ export default function DriverProfileScreen() {
           iconName="document-outline"
           label="Terms of service"
           hint="View platform terms"
-          onPress={() => router.push('/(passenger)/legal/terms')}
+          onPress={() => router.push('/(driver)/legal/terms')}
         />
         <View style={styles.rowDivider} />
         <SettingsRow
           iconName="shield-checkmark-outline"
           label="Privacy policy"
           hint="How your data is processed"
-          onPress={() => router.push('/(passenger)/legal/privacy')}
+          onPress={() => router.push('/(driver)/legal/privacy')}
         />
       </AppCard>
 

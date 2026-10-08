@@ -10,6 +10,12 @@
 | My Ticket | QR code always visible | QR shown only once the fare is paid and the ticket is still active; otherwise a locked panel explaining why | A QR on an unpaid or cancelled ticket would be scanned and rejected at the door, which is a worse experience than saying so up front. |
 | My Ticket | "Working offline" / "Offline Ticket Available" pill | Both states implemented: the screen caches the ticket and falls back to the stored copy when the API cannot be reached | Buses are routinely out of coverage, which is exactly when the conductor asks to see the ticket (NFR-04). The pill says which copy is on screen and when it was last synced. |
 
+## Driver Bookings and the seat map
+
+| Figma | Implemented | Reason |
+|---|---|---|
+| "Open the seat map" from the driver's Bookings screen | A read-only driver seat map, not the passenger's Select Seats screen | Two reasons. The passenger screen sells a seat: it chooses stops, prices the journey and creates a ticket, which is not a driver's job. And it lives in the `(passenger)` route group, which the role guard in `app/_layout.js` bounces straight back to the driver home — so the button did nothing but return to Home. The driver now gets the same 2 + 2 grid showing which seats are taken, with the counts and a legend that names each state. |
+
 ## Admin Tickets & Finance page
 
 | Figma | Implemented | Reason |

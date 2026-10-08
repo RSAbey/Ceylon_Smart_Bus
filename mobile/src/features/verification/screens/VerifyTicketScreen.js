@@ -53,9 +53,18 @@ export default function VerifyTicketScreen() {
   const [reloadCounter, setReloadCounter] = useState(0);
 
   const reloadTrip = useCallback(() => setReloadCounter((previousCount) => previousCount + 1), []);
+  // The preview is only mounted while this tab is on screen: Android hands the camera to one view at
+  // a time, and a preview left mounted in the background comes back black.
+  const [isScreenFocused, setIsScreenFocused] = useState(false);
 
   // The driver may have started or ended the trip on another tab, so re-check on focus.
   useFocusEffect(reloadTrip);
+  useFocusEffect(
+    useCallback(() => {
+      setIsScreenFocused(true);
+      return () => setIsScreenFocused(false);
+    }, [])
+  );
 
   useEffect(() => {
     let isEffectActive = true;
@@ -262,13 +271,15 @@ export default function VerifyTicketScreen() {
     >
       <View style={styles.scannerWrapper}>
         <View style={styles.cameraFrame}>
-          {cameraPermission.granted ? (
+          {cameraPermission.granted && isScreenFocused ? (
             <CameraView
               style={styles.camera}
               facing="back"
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
               onBarcodeScanned={handleScannedCode}
             />
+          ) : cameraPermission.granted ? (
+            <View style={styles.camera} />
           ) : (
             <View style={styles.permissionBlock}>
               <Ionicons name="camera-outline" size={sizes.iconHuge} color={colors.text.onColor} />
@@ -339,15 +350,15 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: sizes.screenGutter,
   },
+  /* The camera preview is a native surface. Android clips it to black inside a rounded, overflowing
+     container, and an absolutely positioned preview can come out with no size at all — which is why
+     this frame has square corners, no overflow rule, and gives the preview a plain flex child. */
   cameraFrame: {
     flex: 1,
-    borderRadius: radii.lg,
-    overflow: 'hidden',
     backgroundColor: colors.text.primary,
-    justifyContent: 'flex-end',
   },
   camera: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
   },
   permissionBlock: {
     ...StyleSheet.absoluteFillObject,
@@ -399,9 +410,11 @@ const styles = StyleSheet.create({
     height: sizes.borderThick,
     backgroundColor: colors.secondary[500],
   },
+  /* Sits over the preview rather than below it, now that the preview fills the frame. */
   hintPill: {
+    position: 'absolute',
+    bottom: spacing.xl,
     alignSelf: 'center',
-    marginBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radii.md,

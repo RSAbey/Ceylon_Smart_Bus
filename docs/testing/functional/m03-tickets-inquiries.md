@@ -60,6 +60,11 @@ has started a trip so a bus is in service. Passenger account: `kasun.wijesinghe@
 | TC-V09 | Passenger cannot verify | Signed in as a passenger | Request `POST /api/verification` | 403 | | | NFR-08 |
 | TC-V10 | Camera refused | Camera permission denied | Open Verify Ticket | The screen explains the camera is off and the Type code tab still works | | | NFR-06 |
 | TC-V11 | Recent checks | Two checks done | Scroll under the scanner | Both checks are listed with Scanned / Typed, the time and a Valid / Invalid badge | | | FR-09 |
+| TC-V12 | The camera preview really appears | Camera permission granted, on an Android device | Open Verify Ticket | The live camera picture fills the frame behind the orange corner marks, not a dark panel | | | FR-09, NFR-06 |
+| TC-V13 | The camera is released | On Verify Ticket | Switch to another tab and back | The preview comes back live, not black | | | FR-09 |
+| TC-S07 | Driver seat map opens | Driver on a trip with a booking | Bookings → Open the seat map | The seat map opens and stays open; it does not bounce back to the driver home | | | FR-06 |
+| TC-S08 | Driver seat map is read only | As TC-S07 | Tap a free seat | Nothing is selected and no ticket flow starts; taken seats carry a cross as well as their colour | | | FR-06, NFR-09 |
+| TC-S09 | Driver seat map counts | As TC-S07 | Compare the header with the Bookings list | "x of y seats taken" matches the seats reserved on that trip | | | FR-06 |
 
 ## Inquiries (I)
 
