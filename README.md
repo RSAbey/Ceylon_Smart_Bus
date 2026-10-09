@@ -117,13 +117,14 @@ Never commit `.env` files; only `.env.example` is tracked.
 
 | Part | Where | How |
 |---|---|---|
-| API | Vercel project, Root Directory `server` | Set `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLIENT_ORIGINS` (admin URL) |
+| API | Vercel project, Root Directory `server` | **Live: https://ceylon-smart-bus.vercel.app/api** &middot; set `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLIENT_ORIGINS` (admin URL), `RESEND_API_KEY`, and `NODE_ENV=development` (see the Developer Guide for why the demo runs that way) |
 | Admin | Vercel project, Root Directory `admin` | Framework Vite; set `VITE_API_URL=https://<api-project>.vercel.app/api` |
 | Database | MongoDB Atlas M0 | Network Access `0.0.0.0/0` (Vercel IPs are dynamic) |
-| APK | EAS Build | `cd mobile && npx eas-cli build -p android --profile preview`; set the API URL in `eas.json` and `GOOGLE_MAPS_API_KEY` as an EAS secret; attach the APK to a GitHub Release |
+| APK | Gradle, on a laptop with the Android SDK | `cd mobile/android && EXPO_PUBLIC_API_URL="https://ceylon-smart-bus.vercel.app/api" ./gradlew assembleRelease`. Needs **JDK 17 or 21** and a **short checkout path** such as `C:\dev\Ceylon_Smart_Bus` &mdash; see the Developer Guide, section 10. No maps key is needed: the maps are Leaflet over OpenStreetMap |
 
 ## Links
 
+- **API:** https://ceylon-smart-bus.vercel.app/api &mdash; check it with `/api/health`
 - **APK:** added at release
 - **Admin URL:** added at release
 
