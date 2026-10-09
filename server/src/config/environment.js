@@ -49,6 +49,10 @@ const environment = Object.freeze({
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || DEFAULT_JWT_EXPIRES_IN,
   clientOrigins: Object.freeze(parseClientOrigins(process.env.CLIENT_ORIGINS)),
+  // Resend sends the password-reset code. Optional: without a key the reset flow still works in
+  // development, where the code comes back in the response instead of by email.
+  resendApiKey: process.env.RESEND_API_KEY,
+  resendFromEmail: process.env.RESEND_FROM_EMAIL,
 });
 
 module.exports = environment;

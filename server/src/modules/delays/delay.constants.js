@@ -17,4 +17,19 @@ const DELAY_REPORT_STATUSES = Object.freeze({
 const MIN_DELAY_MINUTES = 1;
 const MAX_DELAY_MINUTES = 180;
 
-module.exports = { DELAY_REASONS, DELAY_REPORT_STATUSES, MIN_DELAY_MINUTES, MAX_DELAY_MINUTES };
+/** Wording for each reason, used in the notification a passenger reads. */
+const DELAY_REASON_LABELS = Object.freeze({
+  [DELAY_REASONS.HEAVY_TRAFFIC]: 'Heavy traffic',
+  [DELAY_REASONS.ROAD_CLOSURE]: 'Road closure',
+  [DELAY_REASONS.MECHANICAL]: 'Mechanical problem',
+  [DELAY_REASONS.WEATHER]: 'Bad weather',
+  [DELAY_REASONS.OTHER]: 'Other',
+});
+
+module.exports = {
+  DELAY_REASONS,
+  DELAY_REPORT_STATUSES,
+  DELAY_REASON_LABELS,
+  MIN_DELAY_MINUTES,
+  MAX_DELAY_MINUTES,
+};

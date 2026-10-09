@@ -1,11 +1,21 @@
-// Stub router mounted at /api/saved-routes (passenger / driver) — Member 02 adds the endpoints here.
+// Saved-route endpoints mounted at /api/saved-routes (Member 02). Signed-in passengers.
 const express = require('express');
+const { body } = require('express-validator');
+const savedRouteController = require('./savedRoute.controller');
+const authenticateToken = require('../../middleware/authenticateToken');
+const validateRequest = require('../../middleware/validateRequest');
 
 const savedRouteRouter = express.Router();
 
-/**
- * Planned endpoints (document each one in docs/api when it is built):
- * - Scope: passenger saves, lists and removes saved routes.
- */
+savedRouteRouter.use(authenticateToken);
+
+savedRouteRouter.get('/', savedRouteController.listSavedRoutes);
+savedRouteRouter.post(
+  '/',
+  [body('routeId').isMongoId().withMessage('Choose a route to save.')],
+  validateRequest,
+  savedRouteController.saveRoute
+);
+savedRouteRouter.delete('/:savedRouteId', savedRouteController.removeSavedRoute);
 
 module.exports = savedRouteRouter;

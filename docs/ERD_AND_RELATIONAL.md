@@ -118,6 +118,8 @@ erDiagram
         string role "passenger | driver | admin"
         string status "active | blocked"
         string avatarUrl
+        string appPinHash "null until the app lock is turned on"
+        date appPinSetAt
         date createdAt
         date updatedAt
     }
@@ -345,7 +347,7 @@ erDiagram
 ### Relational notation (copy into the report)
 
 ```
-USER(userId PK, fullName, email UK, mobile UK, passwordHash, role, status, avatarUrl, createdAt, updatedAt)
+USER(userId PK, fullName, email UK, mobile UK, passwordHash, role, status, avatarUrl, appPinHash, appPinSetAt, createdAt, updatedAt)
 DRIVER_PROFILE(driverId PK, userId FK→USER UK, licenseNumber UK, nic UK, createdAt)
 OTP_VERIFICATION(otpId PK, userId FK→USER, codeHash, purpose, expiresAt, isUsed)
 ROUTE(routeId PK, routeNumber UK, routeName, origin, destination, baseFare, status, createdAt)

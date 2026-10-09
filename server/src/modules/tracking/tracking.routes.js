@@ -1,12 +1,26 @@
-// Stub router mounted at /api/tracking (passenger / driver) — Member 02 adds the endpoints here.
+// Live tracking endpoints mounted at /api/tracking (Member 02). Drivers post, passengers read.
 const express = require('express');
+const trackingController = require('./tracking.controller');
+const { postLocationValidationRules, nearbyValidationRules } = require('./tracking.validation');
+const authenticateToken = require('../../middleware/authenticateToken');
+const authorizeRoles = require('../../middleware/authorizeRoles');
+const validateRequest = require('../../middleware/validateRequest');
+const { USER_ROLES } = require('../users/user.constants');
 
 const trackingRouter = express.Router();
 
-/**
- * Planned endpoints (document each one in docs/api when it is built):
- * - Scope: driver posts GPS every 5 s; passenger polls latest bus position + ETA (FR-02, FR-03, NFR-01).
- * - ETA must add delayService.getActiveDelayMinutes(tripId) to stops ahead of the bus (FR-08).
- */
+trackingRouter.use(authenticateToken);
+
+// Only a driver may report a bus position, and only for their own trip.
+trackingRouter.post(
+  '/location',
+  authorizeRoles(USER_ROLES.DRIVER),
+  postLocationValidationRules,
+  validateRequest,
+  trackingController.postBusLocation
+);
+
+trackingRouter.get('/nearby', nearbyValidationRules, validateRequest, trackingController.getNearbyBuses);
+trackingRouter.get('/trips/:tripId', trackingController.getTripTracking);
 
 module.exports = trackingRouter;

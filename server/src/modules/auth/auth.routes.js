@@ -1,17 +1,33 @@
-// Auth endpoints mounted at /api/auth (Member 01). Login is public; no token is needed.
+// Auth endpoints mounted at /api/auth (Member 01). All of these are public: the caller has no token yet.
 const express = require('express');
 const authController = require('./auth.controller');
-const { loginValidationRules } = require('./auth.validation');
+const {
+  loginValidationRules,
+  registerValidationRules,
+  verifyOtpValidationRules,
+  resendOtpValidationRules,
+  forgotPasswordValidationRules,
+  resetPasswordValidationRules,
+} = require('./auth.validation');
 const validateRequest = require('../../middleware/validateRequest');
 
 const authRouter = express.Router();
 
+authRouter.post('/register', registerValidationRules, validateRequest, authController.register);
+authRouter.post('/verify-otp', verifyOtpValidationRules, validateRequest, authController.verifyOtp);
+authRouter.post('/resend-otp', resendOtpValidationRules, validateRequest, authController.resendOtp);
 authRouter.post('/login', loginValidationRules, validateRequest, authController.login);
-
-/**
- * Planned scope for Member 01 (paths are chosen by the owner and documented in docs/api/m01-accounts.md):
- * - Passenger registration with email or mobile (FR-01), which creates an OTP
- * - OTP verification and resend with a 60 s countdown (mock delivery, no SMS gateway)
- */
+authRouter.post(
+  '/forgot-password',
+  forgotPasswordValidationRules,
+  validateRequest,
+  authController.forgotPassword
+);
+authRouter.post(
+  '/reset-password',
+  resetPasswordValidationRules,
+  validateRequest,
+  authController.resetPassword
+);
 
 module.exports = authRouter;

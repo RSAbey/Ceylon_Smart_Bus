@@ -36,7 +36,10 @@ module.exports = [
   },
   {
     // TICKET_VERIFICATION.result is a field name fixed by the ERD (docs/ERD_AND_RELATIONAL.md section 3).
-    files: ['src/modules/verification/ticketVerification.model.js'],
+    files: [
+      'src/modules/verification/ticketVerification.model.js',
+      'src/modules/verification/verification.service.js',
+    ],
     rules: {
       'id-denylist': ['error', ...bannedIdentifiers.filter((bannedName) => bannedName !== 'result')],
     },

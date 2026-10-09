@@ -1,8 +1,9 @@
 // Shared axios instance: base URL from EXPO_PUBLIC_API_URL, JWT on every request, errors normalised for screens.
 // Feature services call it and receive the API envelope { success, message, data } directly.
 import { create } from 'axios';
+import Constants from 'expo-constants';
 import { getAccessToken } from '../utils/tokenStorage';
-import { API_TIMEOUT_MS } from '../utils/constants';
+import { API_PORT, API_TIMEOUT_MS } from '../utils/constants';
 
 const HTTP_UNAUTHORIZED = 401;
 const NO_RESPONSE_STATUS = 0;
@@ -11,8 +12,24 @@ const UNKNOWN_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
 let handleUnauthorizedSession = null;
 
+/**
+ * Works out which API to talk to.
+ * EXPO_PUBLIC_API_URL always wins when set — that is how EAS builds point at the hosted API.
+ * Otherwise, in development, the API runs on the same laptop as the Metro bundler, so its address is
+ * derived from the dev server host. That way a changing Wi-Fi IP needs no edit to any file.
+ * @returns {string | undefined} Base URL such as "http://192.168.1.12:5000/api".
+ */
+export function resolveApiBaseUrl() {
+  const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (configuredApiUrl) return configuredApiUrl;
+
+  // hostUri looks like "192.168.1.12:8081" and is only present while the Expo CLI is serving the app.
+  const metroHostName = Constants.expoConfig?.hostUri?.split(':')[0];
+  return metroHostName ? `http://${metroHostName}:${API_PORT}/api` : undefined;
+}
+
 const apiClient = create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL,
+  baseURL: resolveApiBaseUrl(),
   timeout: API_TIMEOUT_MS,
   headers: { 'Content-Type': 'application/json' },
 });

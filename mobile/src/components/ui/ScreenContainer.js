@@ -13,6 +13,8 @@ const DEFAULT_SAFE_EDGES = ['top', 'left', 'right'];
  * @param {import('react').ReactNode} [props.header] - Header rendered above the content (does not scroll).
  * @param {boolean} [props.isScrollable] - Wrap the content in a ScrollView (forms, long pages).
  * @param {boolean} [props.hasPadding] - Apply the 16 px screen gutter (default true).
+ * @param {import('react').ReactNode} [props.footer] - Bar pinned below the content (does not scroll),
+ *   for a running total or a primary action that must stay visible while the content scrolls.
  * @param {Array<string>} [props.safeEdges] - Safe-area edges to pad.
  * @returns {import('react').JSX.Element} The container.
  */
@@ -21,6 +23,7 @@ export default function ScreenContainer({
   header,
   isScrollable = false,
   hasPadding = true,
+  footer,
   safeEdges = DEFAULT_SAFE_EDGES,
 }) {
   const contentStyle = [styles.content, hasPadding && styles.contentPadding];
@@ -39,6 +42,7 @@ export default function ScreenContainer({
         ) : (
           <View style={[styles.screen, contentStyle]}>{children}</View>
         )}
+        {footer}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

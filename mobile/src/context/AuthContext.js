@@ -1,10 +1,13 @@
 // Holds the signed-in user for the whole app: restores the session on launch, signs in and signs out.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import apiClient, { registerUnauthorizedHandler } from '../services/apiClient';
-import { clearAccessToken, getAccessToken, saveAccessToken } from '../utils/tokenStorage';
-import { USER_ROLES } from '../utils/constants';
-
-const ADMIN_ON_MOBILE_MESSAGE = 'Admins use the web dashboard. Please sign in there.';
+import {
+  clearAccessToken,
+  getAccessToken,
+  getShouldRememberSession,
+  saveAccessToken,
+} from '../utils/tokenStorage';
+import { clearAppLockState } from '../utils/appLockStorage';
 
 const AuthContext = createContext(null);
 
@@ -18,27 +21,43 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  /**
+   * True when this session came back from storage on launch rather than from someone typing their
+   * password just now. The app lock asks for a PIN only in the first case: a password typed a
+   * moment ago is already proof of who is holding the phone.
+   */
+  const [wasSessionRestored, setWasSessionRestored] = useState(false);
 
   const signOut = useCallback(async () => {
     await clearAccessToken();
+    // The next account to sign in on this phone must not inherit this one's lock.
+    await clearAppLockState();
     setToken(null);
     setUser(null);
+    setWasSessionRestored(false);
   }, []);
 
-  const signIn = useCallback(async (identifier, password) => {
-    const loginEnvelope = await apiClient.post('/auth/login', { identifier, password });
-    const { token: issuedToken, user: signedInUser } = loginEnvelope.data;
-
-    // The mobile app is for passengers and drivers only; admins are never given a mobile session.
-    if (signedInUser.role === USER_ROLES.ADMIN) {
-      throw { message: ADMIN_ON_MOBILE_MESSAGE, status: 0, fieldErrors: {} };
-    }
-
-    await saveAccessToken(issuedToken);
+  const applySession = useCallback(async (issuedToken, signedInUser, shouldRemember = true) => {
+    // Every role signs in here now: an admin lands in the (admin) route group, which carries the
+    // management screens the web dashboard has.
+    await saveAccessToken(issuedToken, shouldRemember);
     setToken(issuedToken);
     setUser(signedInUser);
+    setWasSessionRestored(false);
     return signedInUser;
   }, []);
+
+  const signIn = useCallback(
+    async (identifier, password, shouldRemember = true) => {
+      const loginEnvelope = await apiClient.post('/auth/login', { identifier, password });
+      const { token: issuedToken, user: signedInUser } = loginEnvelope.data;
+      return applySession(issuedToken, signedInUser, shouldRemember);
+    },
+    [applySession]
+  );
+
+  /** Keeps the cached user in step after the Edit Profile screen saves changes. */
+  const replaceCurrentUser = useCallback((updatedUser) => setUser(updatedUser), []);
 
   useEffect(() => {
     registerUnauthorizedHandler(signOut);
@@ -54,9 +73,15 @@ export function AuthProvider({ children }) {
       try {
         const storedToken = await getAccessToken();
         if (!storedToken) return;
+        // "Remember me" was left unticked last time, so the session ends when the app is closed.
+        if (!(await getShouldRememberSession())) {
+          await clearAccessToken();
+          return;
+        }
         const profileEnvelope = await apiClient.get('/users/me');
         setToken(storedToken);
         setUser(profileEnvelope.data);
+        setWasSessionRestored(true);
       } catch {
         // An expired or invalid token simply means the user has to sign in again.
         await clearAccessToken();
@@ -68,8 +93,17 @@ export function AuthProvider({ children }) {
   }, []);
 
   const authState = useMemo(
-    () => ({ user, token, isLoading, signIn, signOut }),
-    [user, token, isLoading, signIn, signOut]
+    () => ({
+      user,
+      token,
+      isLoading,
+      wasSessionRestored,
+      signIn,
+      signOut,
+      applySession,
+      replaceCurrentUser,
+    }),
+    [user, token, isLoading, wasSessionRestored, signIn, signOut, applySession, replaceCurrentUser]
   );
 
   return <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>;
@@ -77,8 +111,9 @@ export function AuthProvider({ children }) {
 
 /**
  * Reads the auth state; must be used inside <AuthProvider>.
- * @returns {{user: object | null, token: string | null, isLoading: boolean, signIn: Function, signOut: Function}}
- *   Current auth state and actions.
+ * @returns {{user: object | null, token: string | null, isLoading: boolean,
+ *   wasSessionRestored: boolean, signIn: Function, signOut: Function, applySession: Function,
+ *   replaceCurrentUser: Function}} Current auth state and actions.
  */
 export function useAuth() {
   const authState = useContext(AuthContext);

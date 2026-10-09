@@ -1,5 +1,5 @@
 // Top bar: menu toggle (small screens), current page name and the signed-in admin.
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { ADMIN_NAVIGATION_ITEMS } from '../../config/navigationItems';
 import { useAuth } from '../../context/AuthContext';
@@ -50,12 +50,13 @@ export default function TopBar({ onMenuClick }) {
         <Menu size={ICON_SIZES.large} aria-hidden="true" />
       </button>
       <p className="topbar__page text-section-heading text-muted">{findCurrentPageLabel(currentLocation.pathname)}</p>
-      <div className="topbar__admin">
+      {/* The signed-in name is where people look for their own account, so it opens it. */}
+      <Link className="topbar__admin" to="/profile">
         <span className="avatar" aria-hidden="true">
           {getNameInitials(user?.fullName)}
         </span>
         <span>{user?.fullName}</span>
-      </div>
+      </Link>
     </header>
   );
 }

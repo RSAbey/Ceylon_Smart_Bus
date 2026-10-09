@@ -9,6 +9,8 @@ const HTTP_STATUS = Object.freeze({
   CONFLICT: 409,
   UNPROCESSABLE_ENTITY: 422,
   INTERNAL_SERVER_ERROR: 500,
+  /** The API worked but something it depends on, such as the email provider, did not. */
+  BAD_GATEWAY: 502,
 });
 
 module.exports = HTTP_STATUS;

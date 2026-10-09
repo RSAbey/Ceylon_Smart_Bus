@@ -1,18 +1,106 @@
 # API contract — Member 01 (Accounts)
 
-Envelope: `{ success, message, data }` / `{ success: false, message, errors }`. Fill one row per endpoint as you build it.
+Envelope: `{ success, message, data }` / `{ success: false, message, errors }`.
 Status: `planned` → `in progress` → `done`.
 
-## Auth (`/api/auth`)
-| Method | Path | Role | Purpose | Status |
-|---|---|---|---|---|
-| POST | `/api/auth/login` | public | Log in with `identifier` (email or mobile) + `password`; returns `{ token, user }` | done (foundation) |
+> **OTP note:** there is no SMS gateway in this project. The server generates the code, stores it hashed, and
+> returns it as `devOtpCode` **only when `NODE_ENV` is not `production`**. The app shows it in a "Demo mode"
+> banner. This is a documented deviation, not a security hole in production.
 
-## Users (`/api/users`, `/api/admin/users`)
+## Auth (`/api/auth`) — all public
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
-| GET | `/api/users/me` | any signed-in | Current user's profile | done (foundation) |
+| POST | `/api/auth/register` | public | Create a passenger account and issue a confirmation code | done |
+| POST | `/api/auth/forgot-password` | public | Email a 6-digit reset code that lasts 5 minutes. Body `{ email }`. The answer is identical whether or not the address has an account, so it cannot be used to find out who is registered; it carries `expiresAt` for the countdown, and outside production `devOtpCode` as well. | done |
+| POST | `/api/auth/reset-password` | public | Finish a reset. Body `{ email, otpCode, newPassword }`. Wrong codes count towards the same 3-attempt limit as registration; the new password has to pass all three password rules. | done |
+| POST | `/api/auth/verify-otp` | public | Confirm the code; returns `{ token, user }` | done |
+| POST | `/api/auth/resend-otp` | public | Issue a replacement code (60 s cooldown) | done |
+| POST | `/api/auth/login` | public | Sign in with `identifier` (email or mobile) + `password` | done |
 
-## Drivers (`/api/admin/drivers`)
+
+**The three password rules.** Every endpoint that sets a password — register, reset and change —
+applies the same three checks: at least 8 characters, at least one capital letter and at least one
+symbol. The app draws them as a three-segment strength meter, but the server is what decides.
+
+**How the reset code travels.** `RESEND_API_KEY` in `server/.env` sends the email through Resend's
+HTTP API. In production the email is the only copy of the code, so a send that Resend refuses fails
+the request with `502`. Outside production the code also comes back as `devOtpCode`, so a refused
+send is logged and the reset still works — which matters because Resend's shared
+`onboarding@resend.dev` sender only delivers to the address that owns the Resend account, and
+rejects reserved domains such as `@example.com` outright. Set `RESEND_FROM_EMAIL` to an address on
+a verified domain to email anyone else.
+
+Until then, **every code is printed in the terminal that runs the API** — sign-up codes and reset
+codes alike, with the number or address they were meant for. That is how a code is read for an
+address Resend will not deliver to. The notice is suppressed in production, where a printed code
+would sit in the server log.
+
+**POST /api/auth/register**
+```json
+{ "fullName": "Kavindu Jayawardane", "email": "k@example.com",
+  "mobile": "0771234567", "password": "At least 8 chars", "hasAcceptedTerms": true }
+```
+→ `201` `{ userId, maskedMobile, expiresAt, resendAfterSeconds, devOtpCode? }` — **no token yet**.
+Errors: `422` invalid fields · `409` email or mobile already registered (with per-field `errors`).
+
+**POST /api/auth/verify-otp** `{ userId, otpCode }` → `200` `{ token, user }`.
+Wrong code → `400` `"Invalid confirmation code. Remaining attempts: N"`. After 3 wrong guesses the code is burned.
+
+## Users (`/api/users`) — signed-in user only
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
+| GET | `/api/users/me` | any signed-in | Current user's profile | done |
+| PATCH | `/api/users/me` | any signed-in | Update name, email, mobile, avatar | done |
+| PATCH | `/api/users/me/password` | any signed-in | Change your own password. Body `{ currentPassword, newPassword }`. The current password is checked against the stored hash; a wrong one returns **422 with a field error**, not 401, so a typo does not sign the caller out. Reusing the same password returns 409. | done |
+| DELETE | `/api/users/me` | passenger, driver | Delete own account for good. Body `{ password }`, checked against the stored hash (422 with a field error when wrong). Everything the account owns goes with it — tickets and their payments, seat bookings and verifications, the wallet and its statement, saved routes, alert subscriptions, recent searches, notifications, inquiries and their replies, and for a driver the profile and delay reports, with their bus returned to the pool. A driver on an ongoing trip is refused with 409. Admins are refused. | done |
+
+### The optional app lock PIN
+Four digits that lock the mobile app itself on a phone the owner has chosen to stay signed in on.
+It is **not a second factor**: the JWT is what the API trusts, so the PIN guards the app's screens,
+not the account. A wrong PIN is always **422 with a field error, never 401**, because a mistyped PIN
+must not end a session the caller legitimately holds.
+
+| Method | Path | Role | Purpose | Status |
+|---|---|---|---|---|
+| GET | `/api/users/me/pin` | any signed-in | **Read** the state of the lock: `{ isPinSet, setAt, pinLength }`. The digits are bcrypt hashed and are never returned, to anybody — a forgotten PIN is turned off with the account password, not looked up. | done |
+| POST | `/api/users/me/pin` | any signed-in | **Create** the PIN. Body `{ pin }`, exactly `pinLength` digits. `201` with the new state. Already has one → `409`, so an unlocked phone cannot be used to replace a lock silently. | done |
+| PATCH | `/api/users/me/pin` | any signed-in | **Change** the PIN. Body `{ currentPin, newPin }`. Wrong current PIN → `422` with a field error on `currentPin`; same PIN again → `409`; no PIN yet → `404`. | done |
+| DELETE | `/api/users/me/pin` | any signed-in | **Remove** the PIN. Body `{ password }` — the account password, not the PIN, because switching a lock off is the dangerous direction and because it is the way back for someone who has forgotten their PIN. Wrong password → `422` with a field error. | done |
+| POST | `/api/users/me/pin/verify` | any signed-in | What the lock screen calls. Body `{ pin }` → `200` when right, `422` with a field error on `pin` when wrong, `404` when the lock has since been turned off elsewhere. | done |
+
+The app counts wrong tries **on the device**, in secure storage, and signs the user out after five.
+Counting them there rather than on the server is deliberate: clearing the app's data to reset the
+count also destroys the stored session, so the attacker is returned to the sign-in screen and needs
+the password — the counter cannot be reset into a weaker position than it started from.
+
+## Admin accounts (`/api/admin/users`) — admin only
+| Method | Path | Role | Purpose | Status |
+|---|---|---|---|---|
+| GET | `/api/admin/users?role=&status=&search=&page=&pageSize=` | admin | Paged account list | done |
+| GET | `/api/admin/users/me/activity` | admin | What the signed-in administrator has done: notifications they published, replies they wrote, and inquiries assigned to them that are not closed. | done |
+| GET | `/api/admin/users/passengers?status=&search=` | admin | The passenger roster for the Passengers page: each account with its ticket count, active tickets, last ticket, wallet balance and open inquiries, plus the counts above the table (total, active, blocked, new in the last 7 days). Search matches name, email or mobile. | done |
+| GET | `/api/admin/users/passengers/:userId` | admin | One passenger's record: the account, fares paid, wallet balance, saved routes, their five latest tickets and any inquiry still open. 404 for an account that is not a passenger. | done |
+| PATCH | `/api/admin/users/:userId/status` | admin | Block or unblock (cannot target yourself) | done |
+
+## Admin drivers (`/api/admin/drivers`) — admin only
+Drivers never self-register (PROJECT_PLAN.md deviation 4). Registering creates **both** the `User`
+(role `driver`) and the `DriverProfile` holding licence + NIC; if the profile fails the user is rolled back.
+
+| Method | Path | Role | Purpose | Status |
+|---|---|---|---|---|
+| POST | `/api/admin/drivers` | admin | Register a driver account + profile | done |
+| GET | `/api/admin/drivers?search=&page=&pageSize=` | admin | Paged driver list (populated with the user) | done |
+| GET | `/api/admin/drivers/:driverId` | admin | One driver | done |
+| PATCH | `/api/admin/drivers/:driverId` | admin | Edit name, licence, NIC or account status | done |
+| DELETE | `/api/admin/drivers/:driverId` | admin | Delete driver and their account | done |
+
+## Validation rules enforced server-side
+| Field | Rule |
+|---|---|
+| `email` | Valid address; unique across accounts |
+| `mobile` | `07XXXXXXXX` or `+94XXXXXXXXX`; unique across accounts |
+| `password` | At least 8 characters; stored as a bcrypt hash, never returned |
+| `hasAcceptedTerms` | Must be `true` on register |
+| `nic` | `123456789V` or 12 digits; unique across drivers |
+| `licenseNumber` | Required; unique across drivers |
+| `otpCode` | Exactly 6 digits; max 3 attempts; expires after 5 minutes |

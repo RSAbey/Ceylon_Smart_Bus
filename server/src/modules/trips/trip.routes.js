@@ -1,11 +1,17 @@
-// Stub router mounted at /api/trips (passenger / driver) — Member 02 adds the endpoints here.
+// Trip endpoints mounted at /api/trips (Member 02). Drivers only: these control a bus in service.
 const express = require('express');
+const tripController = require('./trip.controller');
+const authenticateToken = require('../../middleware/authenticateToken');
+const authorizeRoles = require('../../middleware/authorizeRoles');
+const { USER_ROLES } = require('../users/user.constants');
 
 const tripRouter = express.Router();
 
-/**
- * Planned endpoints (document each one in docs/api when it is built):
- * - Scope: driver starts/ends a trip on the assigned route.
- */
+tripRouter.use(authenticateToken, authorizeRoles(USER_ROLES.DRIVER));
+
+tripRouter.get('/mine', tripController.getMyTripOverview);
+tripRouter.get('/driver-profile', tripController.getMyDriverProfile);
+tripRouter.post('/start', tripController.startTrip);
+tripRouter.post('/end', tripController.endTrip);
 
 module.exports = tripRouter;

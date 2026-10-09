@@ -11,6 +11,9 @@ const tripSchema = new Schema(
     status: { type: String, enum: Object.values(TRIP_STATUSES), default: TRIP_STATUSES.ONGOING },
     startedAt: { type: Date, default: Date.now },
     endedAt: { type: Date },
+    /** isAcceptingBookings: the driver can close this trip to new seat reservations mid-route,
+     * which makes it "walk-on only" in the passenger app. Added beyond the original ERD. */
+    isAcceptingBookings: { type: Boolean, default: true },
     /** lastLatitude / lastLongitude / lastLocationAt: copy of the newest BusLocation so passengers poll one document. */
     lastLatitude: { type: Number },
     lastLongitude: { type: Number },

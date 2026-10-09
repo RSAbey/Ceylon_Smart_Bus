@@ -1,13 +1,14 @@
-// Driver bottom navigation: Dashboard · Trip · Verify · Delay · Profile (same BottomTabBar, driver icon map).
+// Driver bottom navigation: Home · Route · Live · Scan · Booking (same BottomTabBar, driver icon map).
+// Profile, Report Delay and Shift totals are reached from inside those tabs, not from the bar itself.
 import { Tabs } from 'expo-router/js-tabs';
 import BottomTabBar from '../../../src/components/navigation/BottomTabBar';
 
 const DRIVER_TAB_ICONS = Object.freeze({
-  dashboard: 'speedometer-outline',
-  trip: 'bus-outline',
-  'verify-ticket': 'qr-code-outline',
-  'delay-report': 'time-outline',
-  profile: 'person-outline',
+  home: 'home-outline',
+  route: 'git-network-outline',
+  live: 'navigate-outline',
+  scan: 'scan-outline',
+  booking: 'list-outline',
 });
 
 /**
@@ -20,11 +21,11 @@ export default function DriverTabsLayout() {
       tabBar={(tabBarProps) => <BottomTabBar {...tabBarProps} tabIconMap={DRIVER_TAB_ICONS} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="dashboard" options={{ title: 'Dashboard' }} />
-      <Tabs.Screen name="trip" options={{ title: 'Trip' }} />
-      <Tabs.Screen name="verify-ticket" options={{ title: 'Verify' }} />
-      <Tabs.Screen name="delay-report" options={{ title: 'Delay' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      <Tabs.Screen name="home" options={{ title: 'Home' }} />
+      <Tabs.Screen name="route" options={{ title: 'Route' }} />
+      <Tabs.Screen name="live" options={{ title: 'Live' }} />
+      <Tabs.Screen name="scan" options={{ title: 'Scan' }} />
+      <Tabs.Screen name="booking" options={{ title: 'Booking' }} />
     </Tabs>
   );
 }

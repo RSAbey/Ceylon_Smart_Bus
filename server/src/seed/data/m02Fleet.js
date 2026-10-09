@@ -100,9 +100,36 @@ async function seedBuses(routes, driverProfiles) {
   const [route154, route138] = routes;
   const [sunilProfile, ruwanProfile] = driverProfiles;
   return Bus.insertMany([
-    { plateNumber: 'NB-1234', busName: 'Kaduwela Express', capacity: 52, driverId: sunilProfile.id, routeId: route154.id },
-    { plateNumber: 'NC-5678', busName: 'Homagama Link', capacity: 49, driverId: ruwanProfile.id, routeId: route138.id },
-    { plateNumber: 'ND-4321', busName: 'Malabe Shuttle', capacity: 40, status: BUS_STATUSES.MAINTENANCE, routeId: route154.id },
+    {
+      busCode: 'BUS-001',
+      plateNumber: 'NB-1234',
+      busName: 'Kaduwela Express',
+      model: 'Ashok Leyland Viking',
+      capacity: 52,
+      gpsDeviceId: 'GPS-CSB-0001',
+      driverId: sunilProfile.id,
+      routeId: route154.id,
+    },
+    {
+      busCode: 'BUS-002',
+      plateNumber: 'NC-5678',
+      busName: 'Homagama Link',
+      model: 'TATA Marcopolo',
+      capacity: 49,
+      gpsDeviceId: 'GPS-CSB-0002',
+      driverId: ruwanProfile.id,
+      routeId: route138.id,
+    },
+    {
+      busCode: 'BUS-003',
+      plateNumber: 'ND-4321',
+      busName: 'Malabe Shuttle',
+      model: 'TATA Starbus',
+      capacity: 40,
+      gpsDeviceId: 'GPS-CSB-0003',
+      status: BUS_STATUSES.MAINTENANCE,
+      routeId: route154.id,
+    },
   ]);
 }
 

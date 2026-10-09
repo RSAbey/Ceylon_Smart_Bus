@@ -283,8 +283,34 @@ If you change a signature, tell the group chat **before** merging.
 - Never write results before running the tests. Examiners compare the log with the demo.
 
 ## 10. Build & release
+
+### Android APK, built on this laptop (no account, no cloud)
+Needs the Android SDK (Android Studio installs it) and a JDK. `mobile/android/` is generated and
+git-ignored, so it is rebuilt from `app.config.js` rather than edited by hand.
 ```bash
-# Android APK (cloud build)
+cd mobile
+npx expo prebuild --platform android --clean     # regenerates android/ from app.config.js
+# tell Gradle where the SDK is (once, after each --clean):
+#   mobile/android/local.properties  ->  sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk
+cd android
+EXPO_PUBLIC_API_URL="http://<laptop-LAN-IP>:5000/api" ./gradlew assembleRelease
+# the APK lands in mobile/android/app/build/outputs/apk/release/app-release.apk
+```
+
+**`EXPO_PUBLIC_API_URL` must be set on the build command.** It is baked into the APK at build time.
+Without it the app falls back to the Expo dev-server host, which a standalone APK does not have, and
+every request fails. Use the laptop's LAN IP and keep the phone on the same Wi-Fi, or a hosted API
+address once there is one.
+
+**Why `expo-build-properties` is in the plugin list.** A release Android build blocks plain HTTP.
+Our API is served over HTTP, so without `android.usesCleartextTraffic: true` the built app cannot
+reach it at all. Debug builds already allow cleartext; this carries it into a release build.
+
+The APK is signed with the debug keystore, which is what the Expo template configures. That is fine
+for a demo and for the usability sessions; it is not a Play Store upload key.
+
+### Android APK (cloud build, needs an Expo account)
+```bash
 cd mobile
 npm install -g eas-cli && eas login
 eas build:configure                        # first time only

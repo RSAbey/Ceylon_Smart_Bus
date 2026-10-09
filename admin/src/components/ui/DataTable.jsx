@@ -26,8 +26,11 @@ function renderTableCell(column, tableRow) {
  * @param {Function} [props.onRetry] - Retry handler for the error state.
  * @param {string} [props.emptyTitle] - Empty state headline.
  * @param {string} [props.emptyMessage] - Empty state explanation.
- * @param {Array<{label: string, icon?: import('react').ComponentType, onClick: Function, variant?: string}>} [props.rowActions]
- *   Buttons shown at the end of each row; onClick receives the row.
+ * @param {Array<{label: string, icon?: import('react').ComponentType, onClick: Function, variant?: string,
+ *   buildAriaLabel?: Function, isAvailable?: Function}>} [props.rowActions] Buttons shown at the end of each
+ *   row; onClick receives the row. buildAriaLabel(row) should name the row so screen readers can tell
+ *   identical buttons apart. isAvailable(row) hides the button on rows it cannot act on, so a refused
+ *   action is never offered in the first place.
  * @param {string} props.caption - Accessible table description.
  * @returns {import('react').JSX.Element} The table.
  */
@@ -95,16 +98,25 @@ export default function DataTable({
                   {hasRowActions && (
                     <td>
                       <div className="data-table__actions">
-                        {rowActions.map((rowAction) => (
-                          <Button
-                            key={rowAction.label}
-                            label={rowAction.label}
-                            icon={rowAction.icon}
-                            size="small"
-                            variant={rowAction.variant || 'text'}
-                            onClick={() => rowAction.onClick(tableRow)}
-                          />
-                        ))}
+                        {rowActions
+                          .filter(
+                            (rowAction) => !rowAction.isAvailable || rowAction.isAvailable(tableRow)
+                          )
+                          .map((rowAction) => (
+                            <Button
+                              key={rowAction.label}
+                              label={rowAction.label}
+                              icon={rowAction.icon}
+                              size="small"
+                              variant={rowAction.variant || 'text'}
+                              ariaLabel={
+                                rowAction.buildAriaLabel
+                                  ? rowAction.buildAriaLabel(tableRow)
+                                  : undefined
+                              }
+                              onClick={() => rowAction.onClick(tableRow)}
+                            />
+                          ))}
                       </div>
                     </td>
                   )}

@@ -13,6 +13,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { ToastProvider } from '../src/components/ui/ToastMessage';
+import AppLockGate from '../src/components/navigation/AppLockGate';
 import { LOGIN_ROUTE, ROLE_HOME_ROUTES, USER_ROLES } from '../src/utils/constants';
 
 // Keep the splash visible until fonts and the saved session are loaded (avoids a flash of the login screen).
@@ -22,6 +23,7 @@ const AUTH_ROUTE_GROUP = '(auth)';
 const ROLE_ROUTE_GROUPS = Object.freeze({
   [USER_ROLES.PASSENGER]: '(passenger)',
   [USER_ROLES.DRIVER]: '(driver)',
+  [USER_ROLES.ADMIN]: '(admin)',
 });
 
 /**
@@ -67,7 +69,9 @@ export default function RootLayout() {
       <AuthProvider>
         <ToastProvider>
           <StatusBar style="dark" />
-          <RootNavigator />
+          <AppLockGate>
+            <RootNavigator />
+          </AppLockGate>
         </ToastProvider>
       </AuthProvider>
     </SafeAreaProvider>

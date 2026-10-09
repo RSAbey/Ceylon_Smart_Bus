@@ -1,4 +1,6 @@
-// Expo app configuration (replaces app.json so secrets such as the Google Maps key come from the environment).
+// Expo app configuration (a .js config so any future secret can come from the environment).
+// The maps are drawn with Leaflet over OpenStreetMap inside a WebView, so there is no map key here:
+// see docs/evidence/m02/deviations.md for how to switch back to Google Maps if a key is available.
 
 /** Splash background = palette "Surface" (#FFFFFF), matching the white background of the logo artwork. */
 const SPLASH_BACKGROUND_COLOR = '#FFFFFF';
@@ -25,13 +27,17 @@ module.exports = {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: ADAPTIVE_ICON_BACKGROUND_COLOR,
       },
-      config: {
-        // react-native-maps needs this key inside the built APK, otherwise the map is blank.
-        googleMaps: { apiKey: process.env.GOOGLE_MAPS_API_KEY },
-      },
     },
     plugins: [
       'expo-router',
+      [
+        // A release APK blocks plain HTTP by default, so without this the built app cannot reach the
+        // project's own API at all: every request fails before it leaves the phone. The API is
+        // served over HTTP on a laptop or a LAN address for this project, not HTTPS, so cleartext
+        // has to be allowed. Debug builds already allow it; this is what carries it into a release.
+        'expo-build-properties',
+        { android: { usesCleartextTraffic: true } },
+      ],
       'expo-secure-store',
       'expo-font',
       [

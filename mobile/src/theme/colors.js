@@ -45,6 +45,18 @@ export const colors = Object.freeze({
     disabled: '#94A3B8',
     onColor: '#FFFFFF',
   }),
+  /**
+   * Dark chrome for the admin area's navigation bar. The same five values the web dashboard uses in
+   * admin/src/theme/tokens.css, so the two admin interfaces read as one product. --color-chrome is
+   * the Primary Text navy used as a surface; the rest are tints of it.
+   */
+  chrome: Object.freeze({
+    base: '#0F172A',
+    raised: '#1B2941',
+    text: '#F1F5F9',
+    muted: '#94A3B8',
+    border: '#243049',
+  }),
   /** Dimmed backdrop behind dialogs and the drawer: Primary Text (#0F172A) at 50 % opacity. */
   overlay: 'rgba(15, 23, 42, 0.5)',
 });

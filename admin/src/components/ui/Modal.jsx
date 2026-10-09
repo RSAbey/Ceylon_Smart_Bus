@@ -13,9 +13,10 @@ const ESCAPE_KEY = 'Escape';
  * @param {Function} props.onClose - Called on close button, backdrop click or Escape.
  * @param {import('react').ReactNode} props.children - Body content.
  * @param {import('react').ReactNode} [props.footer] - Action buttons.
+ * @param {'standard'|'wide'} [props.size] - "wide" gives a long form two columns instead of one.
  * @returns {import('react').JSX.Element | null} The modal, or null when closed.
  */
-export default function Modal({ isOpen, title, onClose, children, footer }) {
+export default function Modal({ isOpen, title, onClose, children, footer, size = 'standard' }) {
   useEffect(() => {
     if (!isOpen) return undefined;
     const closeOnEscape = (keyboardEvent) => {
@@ -30,7 +31,7 @@ export default function Modal({ isOpen, title, onClose, children, footer }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <section
-        className="modal"
+        className={`modal modal--${size}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"

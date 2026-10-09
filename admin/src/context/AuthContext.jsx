@@ -8,7 +8,7 @@ const NOT_ADMIN_MESSAGE = 'Only administrators can use this dashboard. Passenger
 const AuthContext = createContext(null);
 
 /**
- * Provides { user, isLoading, login, logout } to the dashboard.
+ * Provides { user, isLoading, login, logout, refreshUser } to the dashboard.
  * @param {object} props - Component props.
  * @param {import('react').ReactNode} props.children - App tree.
  * @returns {import('react').JSX.Element} Context provider.
@@ -34,6 +34,16 @@ export function AuthProvider({ children }) {
     return signedInUser;
   }, []);
 
+  /**
+   * Re-reads the signed-in admin from the API, so the top bar matches a profile they just edited.
+   * @returns {Promise<object>} The refreshed account.
+   */
+  const refreshUser = useCallback(async () => {
+    const profileEnvelope = await apiClient.get('/users/me');
+    setUser(profileEnvelope.data);
+    return profileEnvelope.data;
+  }, []);
+
   useEffect(() => {
     registerUnauthorizedHandler(logout);
     return () => registerUnauthorizedHandler(null);
@@ -51,14 +61,18 @@ export function AuthProvider({ children }) {
       .finally(() => setIsLoading(false));
   }, [logout]);
 
-  const authState = useMemo(() => ({ user, isLoading, login, logout }), [user, isLoading, login, logout]);
+  const authState = useMemo(
+    () => ({ user, isLoading, login, logout, refreshUser }),
+    [user, isLoading, login, logout, refreshUser]
+  );
 
   return <AuthContext.Provider value={authState}>{children}</AuthContext.Provider>;
 }
 
 /**
  * Reads the admin auth state; must be used inside <AuthProvider>.
- * @returns {{user: object | null, isLoading: boolean, login: Function, logout: Function}} Auth state and actions.
+ * @returns {{user: object | null, isLoading: boolean, login: Function, logout: Function,
+ *   refreshUser: Function}} Auth state and actions.
  */
 export function useAuth() {
   const authState = useContext(AuthContext);

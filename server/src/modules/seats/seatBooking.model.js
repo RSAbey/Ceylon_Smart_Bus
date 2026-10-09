@@ -6,8 +6,8 @@ const buildToJsonOptions = require('../../utils/toJsonOptions');
 const seatBookingSchema = new Schema(
   {
     tripId: { type: Schema.Types.ObjectId, ref: 'Trip', required: true },
-    /** ticketId: a ticket reserves at most one seat. */
-    ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true, unique: true },
+    /** ticketId: a ticket reserves one or more seats (a family books 4C and 4D on one ticket). */
+    ticketId: { type: Schema.Types.ObjectId, ref: 'Ticket', required: true },
     seatNumber: { type: String, required: true, trim: true, uppercase: true },
     /** status: cancelling a ticket sets "released" so the seat can be booked again. */
     status: {
@@ -25,5 +25,8 @@ seatBookingSchema.index(
   { tripId: 1, seatNumber: 1 },
   { unique: true, partialFilterExpression: { status: SEAT_BOOKING_STATUSES.BOOKED } }
 );
+
+/** Looking up the seats a ticket holds happens on every ticket screen. */
+seatBookingSchema.index({ ticketId: 1 });
 
 module.exports = model('SeatBooking', seatBookingSchema);
