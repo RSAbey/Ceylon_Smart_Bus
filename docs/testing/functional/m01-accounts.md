@@ -113,5 +113,15 @@ away and a code that cannot be reused), and deleting a throwaway account with a 
 inquiry through to its disappearance from the admin roster and the support inbox. The email itself
 was not sent, because no Resend key was configured on the machine that ran the script.
 
+A fourth script ran once the Resend key was in `server/.env`, on 2026-10-09: **10 of 11 assertions
+passing** (the one failure was the script asking for a seeded address that does not exist in this
+database, not a fault in the flow). A temporary account was registered on the Resend account
+owner's mailbox, asked for a reset code, and had its password reset with the code that was emailed;
+the account was deleted again afterwards. Resend's own record for that message reports
+`last_event: delivered`, which is the evidence for TC-A73 at API level — nobody opened the mailbox
+during the check, so TC-A73 itself is still for the device run to confirm. The same script also
+showed that an address Resend refuses (any `@example.com` address, which Resend rejects outright)
+does not stop a reset in development, because the code still comes back in the response there.
+
 That is a developer check on localhost, **not** the device testing this table records. Every Actual
 and Pass/Fail cell above stays empty until the case is run on the APK and the hosted dashboard.

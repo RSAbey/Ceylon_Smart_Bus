@@ -41,8 +41,9 @@ function maskMobileNumber(mobileNumber) {
  * Issues a fresh code, replacing any earlier unused code for the same user and purpose.
  * @param {string} userId - Owner of the code.
  * @param {string} otpPurpose - One of OTP_PURPOSES.
- * @returns {Promise<{expiresAt: Date, resendAfterSeconds: number, devOtpCode: string | undefined}>}
- *   Expiry, resend cooldown, and the code itself outside production.
+ * @returns {Promise<{expiresAt: Date, resendAfterSeconds: number, plainOtpCode: string,
+ *   devOtpCode: string | undefined}>} Expiry, resend cooldown, the code for the caller to send, and
+ *   the same code for the API response outside production.
  */
 async function issueOtp(userId, otpPurpose) {
   // Only the newest code may be used, so older ones are burned first.
@@ -60,6 +61,8 @@ async function issueOtp(userId, otpPurpose) {
   return {
     expiresAt,
     resendAfterSeconds: OTP_RESEND_COOLDOWN_SECONDS,
+    // Only the hash is stored, so this is the caller's one chance to put the code in an email.
+    plainOtpCode: otpCode,
     // Never leak the code in production; in development it stands in for the SMS we cannot send.
     devOtpCode: environment.isProduction ? undefined : otpCode,
   };

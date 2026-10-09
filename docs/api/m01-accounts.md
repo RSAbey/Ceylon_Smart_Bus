@@ -22,6 +22,14 @@ Status: `planned` → `in progress` → `done`.
 applies the same three checks: at least 8 characters, at least one capital letter and at least one
 symbol. The app draws them as a three-segment strength meter, but the server is what decides.
 
+**How the reset code travels.** `RESEND_API_KEY` in `server/.env` sends the email through Resend's
+HTTP API. In production the email is the only copy of the code, so a send that Resend refuses fails
+the request with `502`. Outside production the code also comes back as `devOtpCode`, so a refused
+send is logged and the reset still works — which matters because Resend's shared
+`onboarding@resend.dev` sender only delivers to the address that owns the Resend account, and
+rejects reserved domains such as `@example.com` outright. Set `RESEND_FROM_EMAIL` to an address on
+a verified domain to email anyone else.
+
 **POST /api/auth/register**
 ```json
 { "fullName": "Kavindu Jayawardane", "email": "k@example.com",

@@ -179,6 +179,36 @@ function buildResetEmail(otpCode) {
 }
 
 /**
+ * Emails one reset code, and decides what a failure to send means.
+ * In production the email is the only copy of the code, so a failure has to reach the caller.
+ * In development the code also comes back in the response, and Resend's shared test sender refuses
+ * every recipient except the account owner, so a failure there is logged and the flow carries on.
+ * @param {string} toAddress - The account's email address.
+ * @param {string} otpCode - The six digits to send.
+ * @returns {Promise<void>} Resolves once the attempt is over.
+ */
+async function sendResetCodeEmail(toAddress, otpCode) {
+  const resetEmail = buildResetEmail(otpCode);
+  const emailDetails = {
+    toAddress,
+    subject: resetEmail.subject,
+    bodyText: resetEmail.bodyText,
+    bodyHtml: resetEmail.bodyHtml,
+  };
+
+  if (environment.isProduction) {
+    await sendEmail(emailDetails);
+    return;
+  }
+
+  try {
+    await sendEmail(emailDetails);
+  } catch (sendFailure) {
+    console.error('Reset code email was not sent:', sendFailure.message);
+  }
+}
+
+/**
  * Starts a password reset: issues a six-digit code and emails it (FR-01, NFR-07).
  * The answer is the same whether or not an account exists, so this cannot be used to find out which
  * email addresses are registered.
@@ -199,17 +229,7 @@ async function requestPasswordReset(emailAddress) {
   }
 
   const issuedOtp = await otpService.issueOtp(matchingUser.id, OTP_PURPOSES.RESET);
-  const resetEmail = buildResetEmail(issuedOtp.devOtpCode || '');
-  // devOtpCode is only absent in production, where the email is the only way the code travels.
-  const codeToSend = issuedOtp.devOtpCode;
-  if (codeToSend) {
-    await sendEmail({
-      toAddress: matchingUser.email,
-      subject: resetEmail.subject,
-      bodyText: resetEmail.bodyText,
-      bodyHtml: resetEmail.bodyHtml,
-    });
-  }
+  await sendResetCodeEmail(matchingUser.email, issuedOtp.plainOtpCode);
 
   return {
     expiresAt: issuedOtp.expiresAt,
