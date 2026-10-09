@@ -30,6 +30,11 @@ send is logged and the reset still works — which matters because Resend's shar
 rejects reserved domains such as `@example.com` outright. Set `RESEND_FROM_EMAIL` to an address on
 a verified domain to email anyone else.
 
+Until then, **every code is printed in the terminal that runs the API** — sign-up codes and reset
+codes alike, with the number or address they were meant for. That is how a code is read for an
+address Resend will not deliver to. The notice is suppressed in production, where a printed code
+would sit in the server log.
+
 **POST /api/auth/register**
 ```json
 { "fullName": "Kavindu Jayawardane", "email": "k@example.com",

@@ -12,6 +12,7 @@ const {
   OTP_RESEND_COOLDOWN_SECONDS,
 } = require('./auth.constants');
 const otpService = require('./otp.service');
+const { printOtpForTesting } = require('./otpTerminalNotice');
 const { sendEmail } = require('../../utils/emailSender');
 
 const EMAIL_MARKER = '@';
@@ -87,6 +88,12 @@ async function registerPassenger({ fullName, email, mobile, password }) {
   });
 
   const issuedOtp = await otpService.issueOtp(createdUser.id, OTP_PURPOSES.REGISTER);
+  printOtpForTesting({
+    purpose: OTP_PURPOSES.REGISTER,
+    recipient: createdUser.mobile,
+    otpCode: issuedOtp.plainOtpCode,
+    lifetimeMinutes: OTP_LIFETIME_MINUTES,
+  });
   return {
     userId: createdUser.id,
     maskedMobile: otpService.maskMobileNumber(createdUser.mobile),
@@ -130,6 +137,12 @@ async function verifyRegistrationOtp(userId, otpCode) {
 async function resendRegistrationOtp(userId) {
   const pendingUser = await loadUserAwaitingVerification(userId);
   const issuedOtp = await otpService.issueOtp(pendingUser.id, OTP_PURPOSES.REGISTER);
+  printOtpForTesting({
+    purpose: OTP_PURPOSES.REGISTER,
+    recipient: pendingUser.mobile,
+    otpCode: issuedOtp.plainOtpCode,
+    lifetimeMinutes: OTP_LIFETIME_MINUTES,
+  });
   return { userId: pendingUser.id, maskedMobile: otpService.maskMobileNumber(pendingUser.mobile), ...issuedOtp };
 }
 
@@ -229,6 +242,13 @@ async function requestPasswordReset(emailAddress) {
   }
 
   const issuedOtp = await otpService.issueOtp(matchingUser.id, OTP_PURPOSES.RESET);
+  // Printed before the send is attempted, so a tester has the code even if Resend refuses it.
+  printOtpForTesting({
+    purpose: OTP_PURPOSES.RESET,
+    recipient: matchingUser.email,
+    otpCode: issuedOtp.plainOtpCode,
+    lifetimeMinutes: OTP_LIFETIME_MINUTES,
+  });
   await sendResetCodeEmail(matchingUser.email, issuedOtp.plainOtpCode);
 
   return {
