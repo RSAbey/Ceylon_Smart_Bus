@@ -94,10 +94,14 @@ async function registerPassenger({ fullName, email, mobile, password }) {
     otpCode: issuedOtp.plainOtpCode,
     lifetimeMinutes: OTP_LIFETIME_MINUTES,
   });
+  // Named one by one, never spread: issueOtp also returns the code in plain text for the caller to
+  // send, and spreading would put that straight into the API response, production included.
   return {
     userId: createdUser.id,
     maskedMobile: otpService.maskMobileNumber(createdUser.mobile),
-    ...issuedOtp,
+    expiresAt: issuedOtp.expiresAt,
+    resendAfterSeconds: issuedOtp.resendAfterSeconds,
+    devOtpCode: issuedOtp.devOtpCode,
   };
 }
 
@@ -143,7 +147,14 @@ async function resendRegistrationOtp(userId) {
     otpCode: issuedOtp.plainOtpCode,
     lifetimeMinutes: OTP_LIFETIME_MINUTES,
   });
-  return { userId: pendingUser.id, maskedMobile: otpService.maskMobileNumber(pendingUser.mobile), ...issuedOtp };
+  // Named one by one for the same reason as registerPassenger: never spread an issued OTP.
+  return {
+    userId: pendingUser.id,
+    maskedMobile: otpService.maskMobileNumber(pendingUser.mobile),
+    expiresAt: issuedOtp.expiresAt,
+    resendAfterSeconds: issuedOtp.resendAfterSeconds,
+    devOtpCode: issuedOtp.devOtpCode,
+  };
 }
 
 /**
