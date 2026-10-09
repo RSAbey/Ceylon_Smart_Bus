@@ -30,6 +30,14 @@ module.exports = {
     },
     plugins: [
       'expo-router',
+      [
+        // A release APK blocks plain HTTP by default, so without this the built app cannot reach the
+        // project's own API at all: every request fails before it leaves the phone. The API is
+        // served over HTTP on a laptop or a LAN address for this project, not HTTPS, so cleartext
+        // has to be allowed. Debug builds already allow it; this is what carries it into a release.
+        'expo-build-properties',
+        { android: { usesCleartextTraffic: true } },
+      ],
       'expo-secure-store',
       'expo-font',
       [
