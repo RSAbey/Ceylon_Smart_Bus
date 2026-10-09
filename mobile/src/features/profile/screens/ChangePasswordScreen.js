@@ -59,7 +59,11 @@ export default function ChangePasswordScreen() {
     <ScreenContainer
       isScrollable
       header={
-        <AppHeader title="Change password" onBackPress={router.canGoBack() ? router.back : undefined} />
+        <AppHeader
+          variant="back"
+          title="Change password"
+          onBackPress={router.canGoBack() ? router.back : undefined}
+        />
       }
     >
       <Text style={[typography.bodyMedium, styles.mutedText]}>{PASSWORD_MESSAGES.explanation}</Text>

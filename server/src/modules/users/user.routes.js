@@ -5,6 +5,10 @@ const {
   updateMyProfileValidationRules,
   changePasswordValidationRules,
   deleteAccountValidationRules,
+  createAppPinValidationRules,
+  changeAppPinValidationRules,
+  deleteAppPinValidationRules,
+  verifyAppPinValidationRules,
 } = require('./user.validation');
 const authenticateToken = require('../../middleware/authenticateToken');
 const validateRequest = require('../../middleware/validateRequest');
@@ -26,6 +30,18 @@ userRouter.delete(
   deleteAccountValidationRules,
   validateRequest,
   userController.deleteMyAccount
+);
+
+// The optional app-lock PIN: read, create, change, remove, and the check the lock screen makes.
+userRouter.get('/me/pin', userController.getMyAppPinStatus);
+userRouter.post('/me/pin', createAppPinValidationRules, validateRequest, userController.createMyAppPin);
+userRouter.patch('/me/pin', changeAppPinValidationRules, validateRequest, userController.changeMyAppPin);
+userRouter.delete('/me/pin', deleteAppPinValidationRules, validateRequest, userController.deleteMyAppPin);
+userRouter.post(
+  '/me/pin/verify',
+  verifyAppPinValidationRules,
+  validateRequest,
+  userController.verifyMyAppPin
 );
 
 module.exports = userRouter;

@@ -122,6 +122,7 @@ export default function ForgotPasswordScreen() {
       isScrollable
       header={
         <AppHeader
+          variant="back"
           title="Reset password"
           onBackPress={router.canGoBack() ? router.back : undefined}
         />

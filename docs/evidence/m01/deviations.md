@@ -101,3 +101,23 @@ than expanding the data model for rows that no requirement asks for.
 
 **No data-model change was needed.** `OTP_VERIFICATION.purpose` already had `reset` beside `register`;
 this is the first flow to use it.
+
+## App lock: an optional PIN on the mobile app
+
+Not in the Figma or the brief. It was asked for after Milestone 03 and is listed here so the report
+can account for every screen in the build.
+
+| Asked for | Implemented | Reason |
+|---|---|---|
+| A PIN lock when the app opens, tied to "Remember me" | A lock screen that covers the app when a **remembered** session is restored and the account has a PIN | A session created by typing a password seconds ago needs no PIN on top of it, and an unticked "Remember me" is never restored at all, so it goes to the sign-in screen instead. The tick box itself already existed. |
+| Full CRUD: create, view, change, delete the PIN | Create, change and delete as asked; **"view" shows the state of the lock, not the digits** | The PIN is bcrypt hashed exactly like the password, so nothing can read it back — not the API, not this screen, and not anybody who reaches the database. The read returns whether the lock is on, when the PIN was last set and how many digits to ask for. Showing the digits would mean storing them in a reversible form, which would make the feature weaker than no feature at all. |
+| — | A forgotten PIN is cleared with the **account password** | Said in as many words on the screen. It is also why `DELETE /users/me/pin` asks for the password rather than the PIN: otherwise forgetting four digits would lock somebody out of their own app for good. |
+| — | Five wrong PINs sign the user out | The count is kept in the device's secure storage, so closing the app does not hand back fresh tries. Clearing the app's data to reset it also destroys the stored session, so that route leads back to the sign-in screen and the password. |
+| — | The lock is drawn **over** the navigator, not as a route | A route would have to fight the role guard in `app/_layout.js`, which is exactly what sent five driver links back to Home earlier in this milestone. An opaque layer on top needs no guard and cannot be navigated around. |
+| — | A PIN that could not be checked does not count as a wrong one | Only an answer the server actually refused counts. A request that never arrived is the network failing, not the user forgetting their PIN. |
+
+**What the lock does not do.** It guards the app's screens on that phone, not the account: the JWT is
+what the API trusts, so anyone holding a stolen token could still call the API directly. It is a
+screen lock in the sense a phone's own lock screen is, and the report should not claim more.
+
+**Data model.** Two columns on `USER`, written up in `docs/evidence/m01/erd-changes.md`.

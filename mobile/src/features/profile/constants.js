@@ -24,6 +24,13 @@ export const PROFILE_SECTIONS = Object.freeze([
         route: '/(passenger)/change-password',
       },
       {
+        key: 'app-lock',
+        label: 'App lock',
+        description: 'Ask for a PIN when the app opens',
+        iconName: 'lock-closed-outline',
+        route: '/(passenger)/app-lock',
+      },
+      {
         key: 'payment',
         label: 'Payment methods',
         description: 'Cards and mobile wallets',
@@ -106,6 +113,46 @@ export const PASSWORD_MESSAGES = Object.freeze({
   newTooWeak: 'Finish the three rules under the password box.',
   confirmMismatch: 'Both new password boxes must match.',
   changed: 'Password changed. Use the new one next time you sign in.',
+});
+
+/** Wording on the App lock screen, where the PIN is created, changed and removed. */
+export const APP_LOCK_MESSAGES = Object.freeze({
+  explanation:
+    'An app lock asks for a PIN every time the app opens on this phone, so a borrowed or stolen phone cannot show your tickets. It is optional, and it does not change how you sign in.',
+  offTitle: 'App lock is off',
+  offHint: 'Anyone who picks up this phone can open the app while you are signed in.',
+  onTitle: 'App lock is on',
+  createHeading: 'Choose a PIN',
+  createAction: 'Turn on app lock',
+  created: 'App lock is on. You will be asked for your PIN next time the app opens.',
+  changeHeading: 'Change your PIN',
+  changeAction: 'Save the new PIN',
+  changed: 'Your PIN has been changed.',
+  removeHeading: 'Turn off app lock',
+  removeExplanation:
+    'Your password is asked for rather than your PIN, so forgetting the PIN never locks you out of your own app.',
+  removeAction: 'Turn off app lock',
+  removed: 'App lock is off. The app will open without a PIN.',
+  pinLabel: 'PIN',
+  confirmPinLabel: 'Type the PIN again',
+  currentPinLabel: 'Your PIN now',
+  newPinLabel: 'New PIN',
+  passwordLabel: 'Your password',
+  pinTooShort: 'Enter all the digits of your PIN.',
+  confirmMismatch: 'Both PIN boxes must match.',
+  passwordRequired: 'Enter your password to confirm.',
+  /** Why the digits cannot be shown back to the user, said plainly on the screen. */
+  cannotShowPin:
+    'Your PIN is stored scrambled, the same way your password is, so not even this screen can show it back to you. If you have forgotten it, turn the lock off with your password and choose a new PIN.',
+});
+
+/** Wording on the lock screen that covers the app until the PIN is typed. */
+export const APP_LOCK_SCREEN = Object.freeze({
+  title: 'Enter your PIN',
+  subtitle: 'Your app lock is on, so the app asks for your PIN before it opens.',
+  wrongPin: 'That is not your PIN.',
+  signOutAction: 'Use my password instead',
+  lockedOut: 'Too many wrong PINs. Sign in with your password to carry on.',
 });
 
 /** Wording on the password step of deleting an account. */

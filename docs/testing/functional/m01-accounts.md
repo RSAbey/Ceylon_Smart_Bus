@@ -90,6 +90,26 @@
 | TC-A82 | Wrong password does not delete | As TC-A81 | Enter the wrong password | "That is not your password." in the sheet; the account still works | | | NFR-07 |
 | TC-A83 | Delete removes everything | A passenger with a ticket, wallet balance and an open inquiry | Confirm the delete with the right password | The app returns to Sign In; that email no longer signs in; the admin roster and the support inbox no longer show them or their inquiry | | | FR-01 |
 | TC-A84 | A driver mid-trip cannot delete | Driver with a trip running | Try to delete the account | Refused with a message to end the trip first | | | FR-02 |
+| TC-A85 | App lock starts off | Signed in, never set a PIN | Profile → App lock | "App lock is off" with the warning, and the Choose a PIN form | | | NFR-07 |
+| TC-A86 | Create a PIN | On App lock, lock off | Type the same 4 digits in both boxes → Turn on app lock | A toast confirms and the card becomes "App lock is on" with today's date | | | NFR-07 |
+| TC-A87 | Mistyped confirm PIN | On App lock, lock off | Type 1234 then 1235 | "Both PIN boxes must match." and nothing is saved | | | NFR-07 |
+| TC-A88 | Short PIN refused | On App lock, lock off | Type 12 and submit | "Enter all the digits of your PIN." and nothing is saved | | | NFR-07 |
+| TC-A89 | The lock appears on reopening | TC-A86 done, Remember me was ticked | Close the app fully and reopen it | The lock screen covers the app before any other screen is readable | | | NFR-07 |
+| TC-A90 | The right PIN unlocks | On the lock screen | Tap the 4 correct digits | The dots fill and the app opens on the screen it would have opened on | | | NFR-07 |
+| TC-A91 | A wrong PIN | On the lock screen | Tap 4 wrong digits | "That is not your PIN. 4 tries left.", the dots clear and you stay locked | | | NFR-07, NFR-09 |
+| TC-A92 | Wrong tries survive a restart | After TC-A91 | Close the app, reopen it, type a wrong PIN again | The count continues (3 tries left), it does not start again at 4 | | | NFR-07 |
+| TC-A93 | Out of tries | On the lock screen | Get the PIN wrong five times | The app signs out and shows the sign-in screen | | | NFR-07 |
+| TC-A94 | The way back without the PIN | On the lock screen | Tap "Use my password instead" | The app signs out and the sign-in screen appears | | | NFR-07 |
+| TC-A95 | No PIN when Remember me is unticked | PIN set, sign out, sign in with Remember me unticked | Close the app and reopen it | The sign-in screen appears, not the lock screen | | | NFR-07 |
+| TC-A96 | No PIN right after signing in | PIN set | Sign in with the password | The app opens straight away; the PIN is not asked for on top of the password | | | NFR-07 |
+| TC-A97 | Change the PIN | PIN set | App lock → Change your PIN → current, new, new again | A toast confirms; the new PIN unlocks on the next launch and the old one does not | | | NFR-07 |
+| TC-A98 | Change with the wrong current PIN | PIN set | Enter the wrong current PIN | "That is not your current PIN." under that field, and the PIN is unchanged | | | NFR-07 |
+| TC-A99 | The PIN is never shown | PIN set | Read the App lock screen | It states the PIN cannot be shown back and says to turn the lock off with the password instead; no screen anywhere shows the digits | | | NFR-07 |
+| TC-A100 | Turn the lock off | PIN set | App lock → Turn off app lock → account password | A toast confirms, the card says off, and the next launch asks for no PIN | | | NFR-07 |
+| TC-A101 | Turn off with the wrong password | PIN set | Enter the wrong password in the sheet | "That is not your password." and the lock stays on | | | NFR-07 |
+| TC-A102 | The PIN is not the password | PIN set | Type the PIN into the Turn off sheet's password box | Refused; the account password is what is asked for | | | NFR-07 |
+| TC-A103 | A driver has the same lock | Signed in as a driver | Profile → App lock, then set, change and remove a PIN | Every step behaves as it does for a passenger | | | FR-02, NFR-07 |
+| TC-A104 | The lock does not survive the account | PIN set | Delete the account, register again with the same email | The new account opens with no lock | | | NFR-07 |
 
 
 ## Development checks already run (not a substitute for the table above)
@@ -122,6 +142,20 @@ the account was deleted again afterwards. Resend's own record for that message r
 during the check, so TC-A73 itself is still for the device run to confirm. The same script also
 showed that an address Resend refuses (any `@example.com` address, which Resend rejects outright)
 does not stop a reset in development, because the code still comes back in the response there.
+
+A fifth script covered the app lock PIN on 2026-10-09: **42 assertions, all passing**, covering the
+whole CRUD and the unlock check — the state before any PIN exists, the refusals for changing,
+removing or unlocking a PIN that is not there, five malformed PINs rejected, creating one, the
+refusal to create a second over it, that neither the PIN nor its hash appears in any response,
+a wrong PIN refused as 422 with the session left intact, changing the PIN with the old one then
+failing and the new one working, the set date moving with the change, removing it with the password
+only (a missing password, a wrong password and the PIN itself in place of the password are all
+refused), and a PIN disappearing with the account it belonged to.
+
+The mobile side of the feature was additionally checked by asking Metro to build the Android bundle,
+which compiled every new screen, component and route without a resolution error. That proves the
+wiring, **not** the behaviour: the lock screen, the keypad and the three sheets have not been seen
+on a device, which is what TC-A85 to TC-A104 above are for.
 
 That is a developer check on localhost, **not** the device testing this table records. Every Actual
 and Pass/Fail cell above stays empty until the case is run on the APK and the hosted dashboard.

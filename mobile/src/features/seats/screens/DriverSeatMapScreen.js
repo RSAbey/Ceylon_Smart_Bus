@@ -3,7 +3,7 @@
 // job, so this screen shows the same 2 + 2 layout without any of the selling.
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
 import AppHeader from '../../../components/navigation/AppHeader';
@@ -60,6 +60,7 @@ function SeatSquare({ seat }) {
  */
 export default function DriverSeatMapScreen() {
   const { tripId } = useLocalSearchParams();
+  const router = useRouter();
   const [seatMap, setSeatMap] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
@@ -90,7 +91,13 @@ export default function DriverSeatMapScreen() {
     };
   }, [tripId, reloadCounter]);
 
-  const screenHeader = <AppHeader title="Seat map" hasBackButton />;
+  const screenHeader = (
+    <AppHeader
+      variant="back"
+      title="Seat map"
+      onBackPress={router.canGoBack() ? router.back : undefined}
+    />
+  );
 
   if (isLoading) {
     return (

@@ -17,4 +17,10 @@ const OTP_PURPOSES = Object.freeze({
   RESET: 'reset',
 });
 
-module.exports = { USER_ROLES, USER_STATUSES, OTP_PURPOSES };
+/** How many digits the optional app-lock PIN has. mobile/src/utils/constants.js keeps the same number. */
+const APP_PIN_LENGTH = 4;
+
+/** Exactly APP_PIN_LENGTH digits and nothing else, so the pattern cannot drift from the length. */
+const APP_PIN_PATTERN = new RegExp(`^\\d{${APP_PIN_LENGTH}}$`);
+
+module.exports = { USER_ROLES, USER_STATUSES, OTP_PURPOSES, APP_PIN_LENGTH, APP_PIN_PATTERN };

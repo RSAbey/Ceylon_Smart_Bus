@@ -46,8 +46,15 @@ const userSchema = new Schema(
     /** status: a blocked user is rejected by authenticateToken even with a valid token. */
     status: { type: String, enum: Object.values(USER_STATUSES), default: USER_STATUSES.ACTIVE },
     avatarUrl: { type: String, trim: true },
+    /**
+     * appPinHash: bcrypt hash of the optional app-lock PIN that locks the mobile app itself (NFR-07).
+     * Absent means the user has not turned the lock on. Hashed, so the digits can never be read back.
+     */
+    appPinHash: { type: String, select: false },
+    /** appPinSetAt: when the PIN was created or last changed, which is what the App lock screen shows. */
+    appPinSetAt: { type: Date },
   },
-  { timestamps: true, toJSON: buildToJsonOptions(['passwordHash']) }
+  { timestamps: true, toJSON: buildToJsonOptions(['passwordHash', 'appPinHash']) }
 );
 
 module.exports = model('User', userSchema);

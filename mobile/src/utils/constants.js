@@ -19,9 +19,24 @@ export const SECURE_STORE_KEYS = Object.freeze({
   accessToken: 'ceylonSmartBus.accessToken',
   /** "yes" when the user ticked Remember me, so the session survives closing the app. */
   shouldRememberSession: 'ceylonSmartBus.shouldRememberSession',
+  /**
+   * "yes" when this account has an app lock PIN. Cached on the device so the lock screen can be
+   * shown the instant the app opens, before the API has been asked anything.
+   */
+  isAppPinSet: 'ceylonSmartBus.isAppPinSet',
+  /** How many wrong PINs have been typed; kept on the device so closing the app does not reset it. */
+  failedPinAttempts: 'ceylonSmartBus.failedPinAttempts',
 });
 
 export const REMEMBER_SESSION_FLAG = Object.freeze({ yes: 'yes', no: 'no' });
+
+export const APP_PIN_FLAG = Object.freeze({ yes: 'yes', no: 'no' });
+
+/** Digits in the app lock PIN. Must match server/src/modules/users/user.constants.js. */
+export const APP_PIN_LENGTH = 4;
+
+/** Wrong PINs allowed on the lock screen before the app signs the user out. */
+export const MAX_PIN_ATTEMPTS = 5;
 
 /** Must match server/src/modules/users/user.constants.js. */
 export const USER_ROLES = Object.freeze({

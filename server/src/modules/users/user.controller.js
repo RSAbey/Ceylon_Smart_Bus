@@ -2,8 +2,10 @@
 const userService = require('./user.service');
 const passengerService = require('./passenger.service');
 const adminProfileService = require('./adminProfile.service');
+const appPinService = require('./appPin.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const sendResponse = require('../../utils/sendResponse');
+const HTTP_STATUS = require('../../utils/httpStatus');
 
 /**
  * GET /api/users/me — returns the signed-in user's profile (used to restore a session).
@@ -117,6 +119,64 @@ async function changeMyPassword(request, response) {
 }
 
 /**
+ * GET /api/users/me/pin — the state of the app lock (set or not, and when), never the digits.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function getMyAppPinStatus(request, response) {
+  const pinStatus = await appPinService.getAppPinStatus(request.user.userId);
+  sendResponse(response, 'App lock loaded.', pinStatus);
+}
+
+/**
+ * POST /api/users/me/pin — turns the app lock on for the first time.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function createMyAppPin(request, response) {
+  const pinStatus = await appPinService.createAppPin(request.user.userId, request.body.pin);
+  sendResponse(response, 'App lock is on.', pinStatus, HTTP_STATUS.CREATED);
+}
+
+/**
+ * PATCH /api/users/me/pin — replaces the PIN, with the current one as proof.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function changeMyAppPin(request, response) {
+  const pinStatus = await appPinService.changeAppPin(request.user.userId, {
+    currentPin: request.body.currentPin,
+    newPin: request.body.newPin,
+  });
+  sendResponse(response, 'Your PIN has been changed.', pinStatus);
+}
+
+/**
+ * DELETE /api/users/me/pin — turns the app lock off, with the account password as proof.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function deleteMyAppPin(request, response) {
+  const pinStatus = await appPinService.deleteAppPin(request.user.userId, request.body.password);
+  sendResponse(response, 'App lock is off.', pinStatus);
+}
+
+/**
+ * POST /api/users/me/pin/verify — checks the PIN typed on the lock screen.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function verifyMyAppPin(request, response) {
+  await appPinService.verifyAppPin(request.user.userId, request.body.pin);
+  sendResponse(response, 'Unlocked.');
+}
+
+/**
  * GET /api/admin/users/me/activity — what the signed-in administrator has done.
  * @param {import('express').Request} request - Express request.
  * @param {import('express').Response} response - Express response.
@@ -130,6 +190,11 @@ async function getMyAdminActivity(request, response) {
 module.exports = {
   getMyProfile: asyncHandler(getMyProfile),
   changeMyPassword: asyncHandler(changeMyPassword),
+  getMyAppPinStatus: asyncHandler(getMyAppPinStatus),
+  createMyAppPin: asyncHandler(createMyAppPin),
+  changeMyAppPin: asyncHandler(changeMyAppPin),
+  deleteMyAppPin: asyncHandler(deleteMyAppPin),
+  verifyMyAppPin: asyncHandler(verifyMyAppPin),
   getMyAdminActivity: asyncHandler(getMyAdminActivity),
   listPassengers: asyncHandler(listPassengers),
   getPassenger: asyncHandler(getPassenger),

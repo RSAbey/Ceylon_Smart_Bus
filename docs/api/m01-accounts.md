@@ -54,6 +54,25 @@ Wrong code → `400` `"Invalid confirmation code. Remaining attempts: N"`. After
 | PATCH | `/api/users/me/password` | any signed-in | Change your own password. Body `{ currentPassword, newPassword }`. The current password is checked against the stored hash; a wrong one returns **422 with a field error**, not 401, so a typo does not sign the caller out. Reusing the same password returns 409. | done |
 | DELETE | `/api/users/me` | passenger, driver | Delete own account for good. Body `{ password }`, checked against the stored hash (422 with a field error when wrong). Everything the account owns goes with it — tickets and their payments, seat bookings and verifications, the wallet and its statement, saved routes, alert subscriptions, recent searches, notifications, inquiries and their replies, and for a driver the profile and delay reports, with their bus returned to the pool. A driver on an ongoing trip is refused with 409. Admins are refused. | done |
 
+### The optional app lock PIN
+Four digits that lock the mobile app itself on a phone the owner has chosen to stay signed in on.
+It is **not a second factor**: the JWT is what the API trusts, so the PIN guards the app's screens,
+not the account. A wrong PIN is always **422 with a field error, never 401**, because a mistyped PIN
+must not end a session the caller legitimately holds.
+
+| Method | Path | Role | Purpose | Status |
+|---|---|---|---|---|
+| GET | `/api/users/me/pin` | any signed-in | **Read** the state of the lock: `{ isPinSet, setAt, pinLength }`. The digits are bcrypt hashed and are never returned, to anybody — a forgotten PIN is turned off with the account password, not looked up. | done |
+| POST | `/api/users/me/pin` | any signed-in | **Create** the PIN. Body `{ pin }`, exactly `pinLength` digits. `201` with the new state. Already has one → `409`, so an unlocked phone cannot be used to replace a lock silently. | done |
+| PATCH | `/api/users/me/pin` | any signed-in | **Change** the PIN. Body `{ currentPin, newPin }`. Wrong current PIN → `422` with a field error on `currentPin`; same PIN again → `409`; no PIN yet → `404`. | done |
+| DELETE | `/api/users/me/pin` | any signed-in | **Remove** the PIN. Body `{ password }` — the account password, not the PIN, because switching a lock off is the dangerous direction and because it is the way back for someone who has forgotten their PIN. Wrong password → `422` with a field error. | done |
+| POST | `/api/users/me/pin/verify` | any signed-in | What the lock screen calls. Body `{ pin }` → `200` when right, `422` with a field error on `pin` when wrong, `404` when the lock has since been turned off elsewhere. | done |
+
+The app counts wrong tries **on the device**, in secure storage, and signs the user out after five.
+Counting them there rather than on the server is deliberate: clearing the app's data to reset the
+count also destroys the stored session, so the attacker is returned to the sign-in screen and needs
+the password — the counter cannot be reset into a weaker position than it started from.
+
 ## Admin accounts (`/api/admin/users`) — admin only
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|

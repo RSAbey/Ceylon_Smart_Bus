@@ -1,6 +1,6 @@
 // express-validator rules for the user endpoints (Member 01).
 const { body, param, query } = require('express-validator');
-const { USER_STATUSES } = require('./user.constants');
+const { USER_STATUSES, APP_PIN_LENGTH, APP_PIN_PATTERN } = require('./user.constants');
 const { SRI_LANKA_MOBILE_PATTERN } = require('../auth/auth.constants');
 const { buildPasswordRules } = require('../auth/auth.validation');
 
@@ -38,6 +38,29 @@ const changePasswordValidationRules = [
   ...buildPasswordRules('newPassword'),
 ];
 
+/**
+ * The one rule a PIN has to pass, written once so create, change and unlock cannot disagree.
+ * @param {string} fieldName - Body field holding the PIN.
+ * @returns {Array<object>} express-validator chain for that field.
+ */
+function buildPinRules(fieldName) {
+  return [
+    body(fieldName)
+      .matches(APP_PIN_PATTERN)
+      .withMessage(`Your PIN must be exactly ${APP_PIN_LENGTH} digits.`),
+  ];
+}
+
+const createAppPinValidationRules = buildPinRules('pin');
+
+const verifyAppPinValidationRules = buildPinRules('pin');
+
+const changeAppPinValidationRules = [...buildPinRules('currentPin'), ...buildPinRules('newPin')];
+
+const deleteAppPinValidationRules = [
+  body('password').notEmpty().withMessage('Enter your password to confirm.'),
+];
+
 const passengerListValidationRules = [
   query('status')
     .optional({ values: 'falsy' })
@@ -58,6 +81,10 @@ module.exports = {
   updateMyProfileValidationRules,
   changePasswordValidationRules,
   deleteAccountValidationRules,
+  createAppPinValidationRules,
+  changeAppPinValidationRules,
+  deleteAppPinValidationRules,
+  verifyAppPinValidationRules,
   setUserStatusValidationRules,
   passengerListValidationRules,
   passengerIdValidationRules,

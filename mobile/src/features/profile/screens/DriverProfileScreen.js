@@ -159,6 +159,12 @@ export default function DriverProfileScreen() {
           onPress={() => router.push('/(driver)/change-password')}
         />
         <SettingsRow
+          iconName="lock-closed-outline"
+          label="App lock"
+          hint="Ask for a PIN when the app opens"
+          onPress={() => router.push('/(driver)/app-lock')}
+        />
+        <SettingsRow
           iconName="person-outline"
           label="Personal information"
           hint={`${account?.email} · ${account?.mobile}`}
