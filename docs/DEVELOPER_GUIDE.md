@@ -326,15 +326,26 @@ generated and git-ignored, so it is rebuilt from `app.config.js` rather than edi
 >
 > Building on EAS avoids all of this, because it builds on Linux where these limits do not exist.
 
+The whole recipe, from a clone that is already at a short path:
 ```bash
+# 1. a JDK the Android plugin accepts
+export JAVA_HOME="/c/Program Files/Java/jdk-21"
+
+# 2. generate android/ from app.config.js
 cd mobile
-npx expo prebuild --platform android --clean     # regenerates android/ from app.config.js
-# tell Gradle where the SDK is (once, after each --clean):
-#   mobile/android/local.properties  ->  sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk
+npm install
+npx expo prebuild --platform android --clean
+
+# 3. tell Gradle where the SDK is (once, and again after every --clean)
+echo "sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk" > android/local.properties
+
+# 4. build, with the API address baked in
 cd android
-EXPO_PUBLIC_API_URL="http://<laptop-LAN-IP>:5000/api" ./gradlew assembleRelease
+EXPO_PUBLIC_API_URL="https://<your-api>.vercel.app/api" ./gradlew assembleRelease
+
 # the APK lands in mobile/android/app/build/outputs/apk/release/app-release.apk
 ```
+Install it on a phone with `adb install -r app-release.apk`, or copy the file across and open it.
 
 **`EXPO_PUBLIC_API_URL` must be set on the build command.** It is baked into the APK at build time.
 Without it the app falls back to the Expo dev-server host, which a standalone APK does not have, and
@@ -356,7 +367,53 @@ eas build:configure                        # first time only
 eas build -p android --profile preview     # outputs an .apk download link
 ```
 Download the APK → test on a real phone → attach to GitHub Release `v1.0.0` → link it in the README.
-Admin + API: push `main`; Vercel auto-deploys. Open the hosted admin URL and run the smoke test (login → each page loads).
+### Hosting the API and the dashboard on Vercel
+
+Two projects from the one repository. Everything they need is already committed —
+`server/vercel.json`, `server/api/index.js` and `admin/vercel.json` — so this is configuration only.
+
+**Before the first deploy.** In Atlas, set **Network Access → Allow access from anywhere
+(`0.0.0.0/0`)**. Vercel functions have no fixed IP, so an allowlist of one laptop rejects them, and
+the symptom is requests that simply hang until they time out.
+
+**1. The API.** New Project → import the repo → **Root Directory: `server`**. Environment variables:
+
+| Name | Value |
+|---|---|
+| `MONGODB_URI` | the Atlas connection string |
+| `JWT_SECRET` | a long random string |
+| `JWT_EXPIRES_IN` | `7d` |
+| `NODE_ENV` | `development` — see below |
+| `RESEND_API_KEY` | the Resend key |
+| `CLIENT_ORIGINS` | the admin URL, once it exists (step 3) |
+
+Deploy, then open `https://<api>.vercel.app/api/health`. If that does not answer, nothing else can
+work: check Atlas network access, the connection string, and that `JWT_SECRET` is set — the API
+refuses to start without it.
+
+**2. The dashboard.** New Project → same repo → **Root Directory: `admin`** → environment variable
+`VITE_API_URL = https://<api>.vercel.app/api`. Vite bakes that in at build time, so changing it
+later means redeploying, not just saving.
+
+**3. Join them up.** Set `CLIENT_ORIGINS` on the **API** project to the dashboard's URL exactly, no
+trailing slash, then **redeploy the API** — environment changes do not reach an existing deployment.
+Without this the dashboard loads and every request fails CORS. The mobile app is unaffected: apps
+send no `Origin` header, and `checkRequestOrigin` allows those.
+
+> **Why `NODE_ENV=development` on a hosted API.** In production the OTP is withheld from the API
+> response, and registration sends no email — so on a hosted API with `NODE_ENV=production`
+> **nobody can finish signing up**. Password reset does email, but Resend's shared sender only
+> delivers to the Resend account's own owner until a domain is verified. Running the hosted demo as
+> `development` keeps the codes in the response, exactly as they are locally, which is what the
+> screens already expect.
+>
+> It is a demo decision, not a production one, and the report should say so: codes travel in API
+> responses, so this deployment must not hold real users' data. The honest fix for a real
+> deployment is to verify a domain in Resend and email the registration code as well as the reset
+> code.
+
+Then rebuild the APK with `EXPO_PUBLIC_API_URL` pointing at the hosted API, and it works on any
+network with no laptop running.
 
 ## 11. README must contain (examiner checklist)
 Project overview · architecture diagram · tech stack · folder structure · prerequisites · setup for server/admin/mobile · env variables (names only) ·
