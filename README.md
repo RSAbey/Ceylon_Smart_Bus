@@ -36,7 +36,7 @@ Live tracking uses HTTP polling (every 5 s) because WebSockets are not available
 | Database | MongoDB Atlas + Mongoose |
 | Auth | JWT + bcryptjs, roles `passenger`, `driver`, `admin` |
 | Admin | React + Vite, React Router, Recharts, lucide-react, plain CSS variables |
-| Hosting / build | Vercel (API + admin), EAS Build (Android APK) |
+| Hosting / build | Vercel (API), Netlify (admin dashboard), local Gradle build (Android APK) |
 
 Full justification: [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md) §4.
 
@@ -118,8 +118,9 @@ Never commit `.env` files; only `.env.example` is tracked.
 | Part | Where | How |
 |---|---|---|
 | API | Vercel project, Root Directory `server` | **Live: https://ceylon-smart-bus.vercel.app/api** &middot; set `MONGODB_URI`, `JWT_SECRET`, `JWT_EXPIRES_IN`, `CLIENT_ORIGINS` (admin URL), `RESEND_API_KEY`, and `NODE_ENV=development` (see the Developer Guide for why the demo runs that way) |
-| Admin | Vercel project, Root Directory `admin` | Framework Vite; set `VITE_API_URL=https://<api-project>.vercel.app/api` |
+| Admin | **Netlify site** | `netlify.toml` at the repo root carries the build settings, so only one thing needs adding in the UI: `VITE_API_URL=https://ceylon-smart-bus.vercel.app/api`. Vite bakes it in at build time, so add it **before** the first deploy or redeploy afterwards |
 | Database | MongoDB Atlas M0 | Network Access `0.0.0.0/0` (Vercel IPs are dynamic) |
+| CORS | On the API project | `CLIENT_ORIGINS` must list the Netlify URL exactly, no trailing slash &mdash; then **redeploy the API**, since environment changes do not reach an existing deployment |
 | APK | Gradle, on a laptop with the Android SDK | `cd mobile/android && EXPO_PUBLIC_API_URL="https://ceylon-smart-bus.vercel.app/api" ./gradlew assembleRelease`. Needs **JDK 17 or 21** and a **short checkout path** such as `C:\dev\Ceylon_Smart_Bus` &mdash; see the Developer Guide, section 10. No maps key is needed: the maps are Leaflet over OpenStreetMap |
 
 ## Links

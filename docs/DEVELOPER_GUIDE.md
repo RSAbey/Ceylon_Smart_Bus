@@ -391,14 +391,32 @@ Deploy, then open `https://<api>.vercel.app/api/health`. If that does not answer
 work: check Atlas network access, the connection string, and that `JWT_SECRET` is set — the API
 refuses to start without it.
 
-**2. The dashboard.** New Project → same repo → **Root Directory: `admin`** → environment variable
-`VITE_API_URL = https://<api>.vercel.app/api`. Vite bakes that in at build time, so changing it
-later means redeploying, not just saving.
+**2. The dashboard, on Netlify.** The API is an Express server, so it belongs on Vercel; the
+dashboard is a static Vite build, which Netlify serves happily. `netlify.toml` at the repository
+root already carries the build settings, so nothing needs typing into the Netlify UI:
 
-**3. Join them up.** Set `CLIENT_ORIGINS` on the **API** project to the dashboard's URL exactly, no
-trailing slash, then **redeploy the API** — environment changes do not reach an existing deployment.
-Without this the dashboard loads and every request fails CORS. The mobile app is unaffected: apps
-send no `Origin` header, and `checkRequestOrigin` allows those.
+- netlify.com → **Add new site → Import an existing project** → pick the repository.
+- Leave the build settings alone. Netlify reads `netlify.toml`, which sets the base directory to
+  `admin`, the command to `npm run build` and the publish directory to `admin/dist`.
+- **Site configuration → Environment variables → Add:**
+  `VITE_API_URL = https://<api>.vercel.app/api`
+- **Deploy.**
+
+> **Add the variable before the first build, or add it and then redeploy.** Vite bakes
+> `VITE_API_URL` into the JavaScript at build time; it is not read when the page loads. A site built
+> without it ships with `baseURL: undefined` and every request fails, no matter what the variable
+> says afterwards. "Clear cache and deploy site" is what applies the change.
+
+`netlify.toml` also redirects every path to `index.html`. Without that, opening or refreshing a deep
+link such as `/fleet` asks Netlify for a file that does not exist and gets a 404 — the dashboard
+only works from the home page.
+
+**3. Join them up.** Set `CLIENT_ORIGINS` on the **API** project to the Netlify URL exactly, with no
+trailing slash, for example `https://ceylon-smart-bus.netlify.app`, then **redeploy the API** —
+environment changes do not reach a deployment that already exists. Without this the dashboard loads
+and every request fails CORS, which in the browser console reads as a network error rather than
+anything about origins. The mobile app is unaffected: apps send no `Origin` header, and
+`checkRequestOrigin` allows those.
 
 > **Why `NODE_ENV=development` on a hosted API.** In production the OTP is withheld from the API
 > response, and registration sends no email — so on a hosted API with `NODE_ENV=production`
