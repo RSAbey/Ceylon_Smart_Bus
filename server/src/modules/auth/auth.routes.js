@@ -6,6 +6,8 @@ const {
   registerValidationRules,
   verifyOtpValidationRules,
   resendOtpValidationRules,
+  forgotPasswordValidationRules,
+  resetPasswordValidationRules,
 } = require('./auth.validation');
 const validateRequest = require('../../middleware/validateRequest');
 
@@ -15,5 +17,17 @@ authRouter.post('/register', registerValidationRules, validateRequest, authContr
 authRouter.post('/verify-otp', verifyOtpValidationRules, validateRequest, authController.verifyOtp);
 authRouter.post('/resend-otp', resendOtpValidationRules, validateRequest, authController.resendOtp);
 authRouter.post('/login', loginValidationRules, validateRequest, authController.login);
+authRouter.post(
+  '/forgot-password',
+  forgotPasswordValidationRules,
+  validateRequest,
+  authController.forgotPassword
+);
+authRouter.post(
+  '/reset-password',
+  resetPasswordValidationRules,
+  validateRequest,
+  authController.resetPassword
+);
 
 module.exports = authRouter;

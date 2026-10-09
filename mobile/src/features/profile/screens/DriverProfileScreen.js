@@ -153,6 +153,12 @@ export default function DriverProfileScreen() {
       </Text>
       <AppCard>
         <SettingsRow
+          iconName="key-outline"
+          label="Change password"
+          hint="Keep your account yours"
+          onPress={() => router.push('/(driver)/change-password')}
+        />
+        <SettingsRow
           iconName="person-outline"
           label="Personal information"
           hint={`${account?.email} · ${account?.mobile}`}

@@ -1,19 +1,18 @@
 // Edit Profile screen (Member 01): update name, email and mobile, or delete the account (FR-01 update/delete).
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
 import AppHeader from '../../../components/navigation/AppHeader';
 import AppButton from '../../../components/ui/AppButton';
 import AppTextInput from '../../../components/ui/AppTextInput';
-import ConfirmDialog from '../../../components/ui/ConfirmDialog';
 import { useToast } from '../../../components/ui/ToastMessage';
 import { useAuth } from '../../../context/AuthContext';
 import { LOGIN_ROUTE } from '../../../utils/constants';
 import { colors, radii, sizes, spacing, typography } from '../../../theme';
 import { deleteMyAccount, updateMyProfile } from '../services/profileApi';
-import { DELETE_ACCOUNT_DIALOG } from '../constants';
+import { DELETE_ACCOUNT_PASSWORD } from '../constants';
 import { EMAIL_PATTERN, REGISTER_MESSAGES, SRI_LANKA_MOBILE_PATTERN } from '../../auth/constants';
 
 /**
@@ -50,6 +49,14 @@ export default function EditProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteDialogVisible, setIsDeleteDialogVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState('');
+
+  const closeDeleteDialog = () => {
+    setIsDeleteDialogVisible(false);
+    setDeletePassword('');
+    setDeleteErrorMessage('');
+  };
 
   const editField = (fieldName, typedText) =>
     setProfileForm((previousForm) => ({ ...previousForm, [fieldName]: typedText }));
@@ -79,14 +86,20 @@ export default function EditProfileScreen() {
   };
 
   const confirmDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteErrorMessage(DELETE_ACCOUNT_PASSWORD.required);
+      return;
+    }
+    setDeleteErrorMessage('');
     setIsDeleting(true);
     try {
-      await deleteMyAccount();
+      await deleteMyAccount(deletePassword);
       await signOut();
       router.replace(LOGIN_ROUTE);
     } catch (deleteError) {
-      setSaveErrorMessage(deleteError.message);
-      setIsDeleteDialogVisible(false);
+      // The wrong password is answered inside the dialog, so the account is never left half-deleted
+      // with the reason hidden behind it.
+      setDeleteErrorMessage(deleteError.message);
     } finally {
       setIsDeleting(false);
     }
@@ -153,16 +166,45 @@ export default function EditProfileScreen() {
         />
       </View>
 
-      <ConfirmDialog
-        isVisible={isDeleteDialogVisible}
-        title={DELETE_ACCOUNT_DIALOG.title}
-        message={DELETE_ACCOUNT_DIALOG.message}
-        confirmLabel={DELETE_ACCOUNT_DIALOG.confirmLabel}
-        isDestructive
-        isConfirming={isDeleting}
-        onConfirm={confirmDeleteAccount}
-        onCancel={() => setIsDeleteDialogVisible(false)}
-      />
+      <Modal
+        visible={isDeleteDialogVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={closeDeleteDialog}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={typography.heading3}>{DELETE_ACCOUNT_PASSWORD.title}</Text>
+            <Text style={[typography.bodyMedium, styles.mutedText]}>
+              {DELETE_ACCOUNT_PASSWORD.explanation}
+            </Text>
+            <AppTextInput
+              label={DELETE_ACCOUNT_PASSWORD.label}
+              placeholder="The password you sign in with"
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+              errorText={deleteErrorMessage}
+              isPasswordField
+              autoComplete="current-password"
+            />
+            <AppButton
+              label={DELETE_ACCOUNT_PASSWORD.confirmLabel}
+              variant="error"
+              size="large"
+              isFullWidth
+              isLoading={isDeleting}
+              onPress={confirmDeleteAccount}
+            />
+            <AppButton
+              label="Keep my account"
+              variant="outline"
+              size="large"
+              isFullWidth
+              onPress={closeDeleteDialog}
+            />
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -186,6 +228,18 @@ const styles = StyleSheet.create({
   errorBannerText: {
     flex: 1,
     color: colors.error.dark,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: colors.overlay,
+  },
+  modalCard: {
+    gap: spacing.lg,
+    padding: spacing.xl,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
+    backgroundColor: colors.surface,
   },
   dangerBlock: {
     gap: spacing.sm,

@@ -86,3 +86,18 @@ than expanding the data model for rows that no requirement asks for.
 | "Remember me" checkbox | Omitted | The session already persists until the admin signs out, so the box would have had nothing to switch. |
 | "Forgot password?" link | Omitted | There is no password-reset flow for an administrator: the OTP flow in the data model belongs to passenger registration. A link that goes nowhere is worse than no link. An admin changes their password from My profile, and another admin can be asked for help. |
 | "© 2026 Ceylon Smart Bus · Admin Console v1.0" | "Ceylon Smart Bus · IT3060 group WE-133 · admin console" | There is no release numbering to cite, and the module and group are what this build actually is. |
+
+## Passwords: strength meter, reset by email, and deleting an account
+
+| Figma / brief | Implemented | Reason |
+|---|---|---|
+| One password box on Sign Up | A password box, a three-segment strength meter and a confirm box | The three segments are the three rules — 8 characters, a capital letter, a symbol — and they turn green one at a time. Under them the rules are also listed in words with a tick, so the meter never relies on colour alone (NFR-09). The same three rules are enforced on the server, on registration, reset and change alike. |
+| "Forgot Password?" link | A working reset: email address, a 6-digit code sent by Resend, then the new password | The code is generated with `crypto.randomInt`, stored hashed, lasts 5 minutes and allows 3 wrong guesses, exactly like the registration code — the same `otp.service.js` does both. The screen counts the 5 minutes down, and refuses to submit once it reaches zero. |
+| (not in the brief) | The reset answer is the same for an address with no account | Otherwise the screen becomes a way to find out who is registered. The countdown and wording are identical; nothing is sent. |
+| (not in the brief) | In development the code is also shown on screen | There is no mailbox in a dev build, and the same `devOtpCode` already stood in for the registration SMS. In production the field is absent and the email is the only way the code travels. |
+| "Delete my account" with a confirm dialog | The same button, but the dialog asks for the account password | Deleting is not undoable and a phone left unlocked on a table should not be enough to do it. |
+| Deleting removes the account | Deleting removes everything the account owns | Tickets and their payments, seat bookings and verifications, the wallet and its statement, saved routes, alert subscriptions, recent searches, notifications, inquiries and their replies; for a driver, the profile and their delay reports, with their bus returned to the pool. |
+| — | Trips a driver ran are kept | A trip carries other passengers' tickets and is the operator's service record, so it is not the driver's to delete. The trip keeps a `driverId` that no longer resolves; every screen that shows a driver already copes with that and says "driver not recorded". A driver on an ongoing trip cannot delete their account at all, because passengers are tracking that bus. |
+
+**No data-model change was needed.** `OTP_VERIFICATION.purpose` already had `reset` beside `register`;
+this is the first flow to use it.

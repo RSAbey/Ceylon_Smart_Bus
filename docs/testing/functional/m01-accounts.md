@@ -74,6 +74,22 @@
 | TC-A66 | Sign in returns you where you were | Signed out, open `/fleet` | Sign in | The dashboard lands on Live Fleet, not Overview | | | FR-01 |
 | TC-A67 | Driver edits their own details | Signed in as a driver | Profile → Edit profile | The edit screen opens and saves; it does not bounce back to the driver home | | | FR-01 |
 | TC-A68 | Driver opens Terms and Privacy | Signed in as a driver | Profile → Terms of Service, then Privacy Policy | Each screen opens (placeholder content is fine); neither bounces back to Home | | | FR-01 |
+| TC-A69 | Strength meter fills up | On Sign Up | Type `a`, then `aaaaaaaa`, then `Aaaaaaaa`, then `Aaaaaaa@` | The three segments turn green one at a time, and the line under them says what is still missing | | | FR-01, NFR-07, NFR-09 |
+| TC-A70 | Weak password refused | On Sign Up | Enter `password` and submit | The field explains that the three rules are not met and nothing is sent | | | NFR-07 |
+| TC-A71 | Confirm password must match | On Sign Up | Enter two different passwords → Agree & Register | "Both password boxes must match." and nothing is sent | | | FR-01 |
+| TC-A72 | Request a reset code | Signed out, an account exists | Sign in → Forgot Password? → enter that email → Send reset code | The screen moves to the code step and counts down from 5:00 | | | FR-01 |
+| TC-A73 | The code arrives by email | TC-A72 with RESEND_API_KEY set | Open the mailbox of that address | An email with a 6-digit code and the 5-minute notice | | | FR-01 |
+| TC-A74 | Unknown email says the same | Signed out | Ask for a reset for an address with no account | The same screen and countdown appear; no email is sent | | | NFR-07 |
+| TC-A75 | Wrong code | On the code step | Enter six wrong digits | "Invalid confirmation code. Remaining attempts: 2" | | | NFR-07 |
+| TC-A76 | Reset the password | On the code step with the right code | Enter the code and a password meeting all three rules | A toast confirms, the app returns to Sign In, and the new password works while the old one does not | | | FR-01, NFR-07 |
+| TC-A77 | Expired code | On the code step | Wait for the countdown to reach 0:00 | The pill says the code has expired and Save is disabled until a new code is sent | | | NFR-07 |
+| TC-A78 | A code works only once | TC-A76 done | Try the same code again | Refused; a new code is needed | | | NFR-07 |
+| TC-A79 | Change password | Signed in as a passenger or driver | Profile → Change password → current, new, confirm | A toast confirms; the new password signs in afterwards | | | NFR-07 |
+| TC-A80 | Change password, wrong current | As TC-A79 | Enter the wrong current password | "That is not your current password." under that field, and you stay signed in | | | NFR-07 |
+| TC-A81 | Delete asks for the password | Signed in as a passenger | Edit profile → Delete my account | A sheet asks for the account password and says what will be removed | | | FR-01, NFR-07 |
+| TC-A82 | Wrong password does not delete | As TC-A81 | Enter the wrong password | "That is not your password." in the sheet; the account still works | | | NFR-07 |
+| TC-A83 | Delete removes everything | A passenger with a ticket, wallet balance and an open inquiry | Confirm the delete with the right password | The app returns to Sign In; that email no longer signs in; the admin roster and the support inbox no longer show them or their inquiry | | | FR-01 |
+| TC-A84 | A driver mid-trip cannot delete | Driver with a trip running | Try to delete the account | Refused with a message to end the trip first | | | FR-02 |
 
 
 ## Development checks already run (not a substitute for the table above)
@@ -89,6 +105,13 @@ passing**, covering the activity figures against the Notifications and Inquiries
 restoring the account's own details, and the whole password path — the refusals for a missing,
 short, wrong or unchanged password, the successful change, the old password no longer working, and
 the seeded password put back at the end.
+
+A third script covered the password features on 2026-10-09: **33 assertions, all passing**, covering
+the three password rules on registration, reset and change, the reset code from request to new
+password (including the same answer for an unknown address, a wrong code, an expiry five minutes
+away and a code that cannot be reused), and deleting a throwaway account with a wallet and an
+inquiry through to its disappearance from the admin roster and the support inbox. The email itself
+was not sent, because no Resend key was configured on the machine that ran the script.
 
 That is a developer check on localhost, **not** the device testing this table records. Every Actual
 and Pass/Fail cell above stays empty until the case is run on the APK and the hosted dashboard.

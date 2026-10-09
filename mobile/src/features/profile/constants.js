@@ -17,6 +17,13 @@ export const PROFILE_SECTIONS = Object.freeze([
         route: '/(passenger)/edit-profile',
       },
       {
+        key: 'password',
+        label: 'Change password',
+        description: 'Keep your account yours',
+        iconName: 'key-outline',
+        route: '/(passenger)/change-password',
+      },
+      {
         key: 'payment',
         label: 'Payment methods',
         description: 'Cards and mobile wallets',
@@ -89,4 +96,24 @@ export const DELETE_ACCOUNT_DIALOG = Object.freeze({
 export const DRIVER_PROFILE_SECTIONS = Object.freeze({
   account: 'Account settings',
   safety: 'Support & legal',
+});
+
+/** Wording on the Change password screen. */
+export const PASSWORD_MESSAGES = Object.freeze({
+  explanation:
+    'Your current password is asked for as well, so a phone left unlocked cannot be used to lock you out of your own account.',
+  currentRequired: 'Enter your current password.',
+  newTooWeak: 'Finish the three rules under the password box.',
+  confirmMismatch: 'Both new password boxes must match.',
+  changed: 'Password changed. Use the new one next time you sign in.',
+});
+
+/** Wording on the password step of deleting an account. */
+export const DELETE_ACCOUNT_PASSWORD = Object.freeze({
+  title: 'Enter your password',
+  explanation:
+    'This removes your account and everything on it — tickets, wallet, saved routes and your inquiries. It cannot be undone.',
+  label: 'Your password',
+  confirmLabel: 'Delete my account for good',
+  required: 'Enter your password to confirm.',
 });

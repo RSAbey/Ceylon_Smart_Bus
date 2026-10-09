@@ -20,6 +20,13 @@ const BCRYPT_SALT_ROUNDS = 10;
 /** Minimum password length shown on the Sign Up screen ("Minimum 8 characters"). */
 const MIN_PASSWORD_LENGTH = 8;
 
+/**
+ * The other two rules the Sign Up screen draws as a strength meter. They are enforced here as well,
+ * because a meter in the app is a courtesy and the server is what actually decides (NFR-07).
+ */
+const PASSWORD_UPPERCASE_PATTERN = /[A-Z]/;
+const PASSWORD_SYMBOL_PATTERN = /[^A-Za-z0-9]/;
+
 /** Sri Lankan mobile numbers: 10 digits starting 07, or +94 followed by 9 digits. */
 const SRI_LANKA_MOBILE_PATTERN = /^(?:0\d{9}|\+94\d{9})$/;
 
@@ -32,5 +39,7 @@ module.exports = {
   OTP_RESEND_COOLDOWN_SECONDS,
   BCRYPT_SALT_ROUNDS,
   MIN_PASSWORD_LENGTH,
+  PASSWORD_UPPERCASE_PATTERN,
+  PASSWORD_SYMBOL_PATTERN,
   SRI_LANKA_MOBILE_PATTERN,
 };

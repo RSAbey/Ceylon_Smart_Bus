@@ -6,8 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import ScreenContainer from '../../../components/ui/ScreenContainer';
 import AppHeader from '../../../components/navigation/AppHeader';
 import AppTextInput from '../../../components/ui/AppTextInput';
+import PasswordStrengthMeter from '../../../components/ui/PasswordStrengthMeter';
 import AppButton from '../../../components/ui/AppButton';
 import { MIN_TOUCH_TARGET, colors, radii, sizes, spacing, typography } from '../../../theme';
+import { measurePassword } from '../../../utils/passwordRules';
 import { registerPassenger } from '../services/authApi';
 import {
   EMAIL_PATTERN,
@@ -32,8 +34,13 @@ function validateSignUpForm(signUpForm, hasAcceptedTerms) {
   if (!signUpForm.mobile.trim()) formErrors.mobile = REGISTER_MESSAGES.mobileRequired;
   else if (!SRI_LANKA_MOBILE_PATTERN.test(signUpForm.mobile.trim()))
     formErrors.mobile = REGISTER_MESSAGES.mobileInvalid;
-  if (signUpForm.password.length < MIN_PASSWORD_LENGTH)
-    formErrors.password = REGISTER_MESSAGES.passwordTooShort;
+  if (!measurePassword(signUpForm.password).isStrongEnough)
+    formErrors.password = REGISTER_MESSAGES.passwordTooWeak;
+  if (!signUpForm.confirmPassword) {
+    formErrors.confirmPassword = REGISTER_MESSAGES.confirmPasswordRequired;
+  } else if (signUpForm.confirmPassword !== signUpForm.password) {
+    formErrors.confirmPassword = REGISTER_MESSAGES.confirmPasswordMismatch;
+  }
   if (!hasAcceptedTerms) formErrors.hasAcceptedTerms = REGISTER_MESSAGES.termsRequired;
   return formErrors;
 }
@@ -44,7 +51,13 @@ function validateSignUpForm(signUpForm, hasAcceptedTerms) {
  */
 export default function RegisterScreen() {
   const router = useRouter();
-  const [signUpForm, setSignUpForm] = useState({ fullName: '', email: '', mobile: '', password: '' });
+  const [signUpForm, setSignUpForm] = useState({
+    fullName: '',
+    email: '',
+    mobile: '',
+    password: '',
+    confirmPassword: '',
+  });
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [submitErrorMessage, setSubmitErrorMessage] = useState('');
@@ -139,6 +152,16 @@ export default function RegisterScreen() {
           value={signUpForm.password}
           onChangeText={(typedText) => editField('password', typedText)}
           errorText={fieldErrors.password}
+          isPasswordField
+          autoComplete="new-password"
+        />
+        <PasswordStrengthMeter password={signUpForm.password} />
+        <AppTextInput
+          label="Confirm password"
+          placeholder="Type the same password again"
+          value={signUpForm.confirmPassword}
+          onChangeText={(typedText) => editField('confirmPassword', typedText)}
+          errorText={fieldErrors.confirmPassword}
           isPasswordField
           autoComplete="new-password"
         />

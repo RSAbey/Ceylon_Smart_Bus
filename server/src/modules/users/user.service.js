@@ -2,9 +2,9 @@
 // plus admin listing and blocking.
 const bcrypt = require('bcryptjs');
 const User = require('./user.model');
-const DriverProfile = require('../drivers/driverProfile.model');
 const { USER_ROLES } = require('./user.constants');
 const { BCRYPT_SALT_ROUNDS } = require('../auth/auth.constants');
+const { purgeUserAndOwnedData } = require('./accountPurge.service');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
@@ -79,16 +79,29 @@ async function updateMyProfile(userId, profileChanges) {
 /**
  * Deletes the signed-in user's own account. A driver's profile row goes with it.
  * @param {string} userId - Signed-in user.
+ * @param {string} password - Their current password, typed again to confirm.
  * @returns {Promise<void>} Resolves once removed.
  */
-async function deleteMyAccount(userId) {
-  const accountToDelete = await getUserProfileById(userId);
+async function deleteMyAccount(userId, password) {
+  const accountToDelete = await User.findById(userId).select('+passwordHash');
+  if (!accountToDelete) {
+    throw new AppError('User not found.', HTTP_STATUS.NOT_FOUND);
+  }
   // An admin deleting themselves would leave the dashboard unreachable.
   if (accountToDelete.role === USER_ROLES.ADMIN) {
     throw new AppError('Administrator accounts cannot be deleted from the app.', HTTP_STATUS.FORBIDDEN);
   }
-  await DriverProfile.deleteOne({ userId });
-  await User.findByIdAndDelete(userId);
+
+  // Deleting everything is not undoable, so the password is asked for at the moment it happens —
+  // a phone left unlocked on a table is not enough to wipe somebody's account.
+  const isPasswordCorrect = await bcrypt.compare(password, accountToDelete.passwordHash);
+  if (!isPasswordCorrect) {
+    throw new AppError('That is not your password.', HTTP_STATUS.UNPROCESSABLE_ENTITY, [
+      { field: 'password', message: 'That is not your password.' },
+    ]);
+  }
+
+  await purgeUserAndOwnedData(userId);
 }
 
 /**

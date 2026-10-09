@@ -40,7 +40,7 @@ async function updateMyProfile(request, response) {
  * @returns {Promise<void>} Resolves when the response is sent.
  */
 async function deleteMyAccount(request, response) {
-  await userService.deleteMyAccount(request.user.userId);
+  await userService.deleteMyAccount(request.user.userId, request.body.password);
   sendResponse(response, 'Your account has been deleted.');
 }
 

@@ -4,6 +4,7 @@ const userController = require('./user.controller');
 const {
   updateMyProfileValidationRules,
   changePasswordValidationRules,
+  deleteAccountValidationRules,
 } = require('./user.validation');
 const authenticateToken = require('../../middleware/authenticateToken');
 const validateRequest = require('../../middleware/validateRequest');
@@ -20,6 +21,11 @@ userRouter.patch(
   validateRequest,
   userController.changeMyPassword
 );
-userRouter.delete('/me', userController.deleteMyAccount);
+userRouter.delete(
+  '/me',
+  deleteAccountValidationRules,
+  validateRequest,
+  userController.deleteMyAccount
+);
 
 module.exports = userRouter;

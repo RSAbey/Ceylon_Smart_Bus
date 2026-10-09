@@ -6,10 +6,16 @@ const User = require('../users/user.model');
 const { USER_ROLES, USER_STATUSES, OTP_PURPOSES } = require('../users/user.constants');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
-const { BCRYPT_SALT_ROUNDS } = require('./auth.constants');
+const {
+  BCRYPT_SALT_ROUNDS,
+  OTP_LIFETIME_MINUTES,
+  OTP_RESEND_COOLDOWN_SECONDS,
+} = require('./auth.constants');
 const otpService = require('./otp.service');
+const { sendEmail } = require('../../utils/emailSender');
 
 const EMAIL_MARKER = '@';
+const MILLISECONDS_PER_MINUTE = 60 * 1000;
 const INVALID_CREDENTIALS_MESSAGE = 'Incorrect email/mobile number or password.';
 
 /**
@@ -151,9 +157,93 @@ async function loginWithPassword(identifier, password) {
   return { token: issueAccessToken(matchingUser), user: matchingUser.toJSON() };
 }
 
+/**
+ * Writes the reset email. Kept beside the flow it belongs to so the wording and the code cannot
+ * drift apart.
+ * @param {string} otpCode - The six digits the person has to type.
+ * @returns {{subject: string, bodyText: string, bodyHtml: string}} The message.
+ */
+function buildResetEmail(otpCode) {
+  const subject = 'Your Ceylon Smart Bus password reset code';
+  const bodyText =
+    `Your password reset code is ${otpCode}.
+
+` +
+    `It expires in ${OTP_LIFETIME_MINUTES} minutes. If you did not ask to reset your password, ` +
+    'you can ignore this email and nothing will change.';
+  const bodyHtml =
+    `<p>Your password reset code is <strong style="font-size:20px;letter-spacing:3px">${otpCode}</strong>.</p>` +
+    `<p>It expires in ${OTP_LIFETIME_MINUTES} minutes.</p>` +
+    '<p>If you did not ask to reset your password, you can ignore this email and nothing will change.</p>';
+  return { subject, bodyText, bodyHtml };
+}
+
+/**
+ * Starts a password reset: issues a six-digit code and emails it (FR-01, NFR-07).
+ * The answer is the same whether or not an account exists, so this cannot be used to find out which
+ * email addresses are registered.
+ * @param {string} emailAddress - The address typed on the Forgot password screen.
+ * @returns {Promise<object>} When the code expires, when it may be resent, and in development the code.
+ */
+async function requestPasswordReset(emailAddress) {
+  const normalisedEmail = emailAddress.trim().toLowerCase();
+  const matchingUser = await User.findOne({ email: normalisedEmail });
+
+  if (!matchingUser || matchingUser.status === USER_STATUSES.BLOCKED) {
+    // Nothing is sent, and the caller is told exactly what a real request is told.
+    return {
+      expiresAt: new Date(Date.now() + OTP_LIFETIME_MINUTES * MILLISECONDS_PER_MINUTE),
+      resendAfterSeconds: OTP_RESEND_COOLDOWN_SECONDS,
+      lifetimeMinutes: OTP_LIFETIME_MINUTES,
+    };
+  }
+
+  const issuedOtp = await otpService.issueOtp(matchingUser.id, OTP_PURPOSES.RESET);
+  const resetEmail = buildResetEmail(issuedOtp.devOtpCode || '');
+  // devOtpCode is only absent in production, where the email is the only way the code travels.
+  const codeToSend = issuedOtp.devOtpCode;
+  if (codeToSend) {
+    await sendEmail({
+      toAddress: matchingUser.email,
+      subject: resetEmail.subject,
+      bodyText: resetEmail.bodyText,
+      bodyHtml: resetEmail.bodyHtml,
+    });
+  }
+
+  return {
+    expiresAt: issuedOtp.expiresAt,
+    resendAfterSeconds: issuedOtp.resendAfterSeconds,
+    lifetimeMinutes: OTP_LIFETIME_MINUTES,
+    devOtpCode: issuedOtp.devOtpCode,
+  };
+}
+
+/**
+ * Finishes a password reset: checks the code, then stores the new password.
+ * @param {object} resetDetails - What the Forgot password screen collected.
+ * @param {string} resetDetails.email - The account's email address.
+ * @param {string} resetDetails.otpCode - The six digits from the email.
+ * @param {string} resetDetails.newPassword - The password to store.
+ * @returns {Promise<void>} Resolves once the new password is stored.
+ */
+async function resetPassword({ email, otpCode, newPassword }) {
+  const matchingUser = await User.findOne({ email: email.trim().toLowerCase() });
+  if (!matchingUser) {
+    // The code can only have come from a real account, so a missing one means the wrong email.
+    throw new AppError('This code has expired. Please request a new one.', HTTP_STATUS.BAD_REQUEST);
+  }
+
+  await otpService.verifyOtp(matchingUser.id, OTP_PURPOSES.RESET, otpCode);
+  matchingUser.passwordHash = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+  await matchingUser.save();
+}
+
 module.exports = {
   registerPassenger,
   verifyRegistrationOtp,
   resendRegistrationOtp,
   loginWithPassword,
+  requestPasswordReset,
+  resetPassword,
 };

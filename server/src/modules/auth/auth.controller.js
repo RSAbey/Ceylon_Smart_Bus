@@ -51,7 +51,40 @@ async function login(request, response) {
   sendResponse(response, 'Signed in successfully.', loginOutcome);
 }
 
+/**
+ * POST /api/auth/forgot-password — emails a six-digit reset code.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function forgotPassword(request, response) {
+  const resetRequest = await authService.requestPasswordReset(request.body.email);
+  // The same answer either way, so this cannot be used to find out who has an account.
+  sendResponse(
+    response,
+    'If that email has an account, a reset code is on its way.',
+    resetRequest
+  );
+}
+
+/**
+ * POST /api/auth/reset-password — checks the code and stores the new password.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function resetPassword(request, response) {
+  await authService.resetPassword({
+    email: request.body.email,
+    otpCode: request.body.otpCode,
+    newPassword: request.body.newPassword,
+  });
+  sendResponse(response, 'Password changed. Sign in with your new password.');
+}
+
 module.exports = {
+  forgotPassword: asyncHandler(forgotPassword),
+  resetPassword: asyncHandler(resetPassword),
   register: asyncHandler(register),
   verifyOtp: asyncHandler(verifyOtp),
   resendOtp: asyncHandler(resendOtp),

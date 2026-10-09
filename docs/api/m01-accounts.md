@@ -11,9 +11,16 @@ Status: `planned` → `in progress` → `done`.
 | Method | Path | Role | Purpose | Status |
 |---|---|---|---|---|
 | POST | `/api/auth/register` | public | Create a passenger account and issue a confirmation code | done |
+| POST | `/api/auth/forgot-password` | public | Email a 6-digit reset code that lasts 5 minutes. Body `{ email }`. The answer is identical whether or not the address has an account, so it cannot be used to find out who is registered; it carries `expiresAt` for the countdown, and outside production `devOtpCode` as well. | done |
+| POST | `/api/auth/reset-password` | public | Finish a reset. Body `{ email, otpCode, newPassword }`. Wrong codes count towards the same 3-attempt limit as registration; the new password has to pass all three password rules. | done |
 | POST | `/api/auth/verify-otp` | public | Confirm the code; returns `{ token, user }` | done |
 | POST | `/api/auth/resend-otp` | public | Issue a replacement code (60 s cooldown) | done |
 | POST | `/api/auth/login` | public | Sign in with `identifier` (email or mobile) + `password` | done |
+
+
+**The three password rules.** Every endpoint that sets a password — register, reset and change —
+applies the same three checks: at least 8 characters, at least one capital letter and at least one
+symbol. The app draws them as a three-segment strength meter, but the server is what decides.
 
 **POST /api/auth/register**
 ```json
@@ -32,7 +39,7 @@ Wrong code → `400` `"Invalid confirmation code. Remaining attempts: N"`. After
 | GET | `/api/users/me` | any signed-in | Current user's profile | done |
 | PATCH | `/api/users/me` | any signed-in | Update name, email, mobile, avatar | done |
 | PATCH | `/api/users/me/password` | any signed-in | Change your own password. Body `{ currentPassword, newPassword }`. The current password is checked against the stored hash; a wrong one returns **422 with a field error**, not 401, so a typo does not sign the caller out. Reusing the same password returns 409. | done |
-| DELETE | `/api/users/me` | passenger, driver | Delete own account (admins are refused) | done |
+| DELETE | `/api/users/me` | passenger, driver | Delete own account for good. Body `{ password }`, checked against the stored hash (422 with a field error when wrong). Everything the account owns goes with it — tickets and their payments, seat bookings and verifications, the wallet and its statement, saved routes, alert subscriptions, recent searches, notifications, inquiries and their replies, and for a driver the profile and delay reports, with their bus returned to the pool. A driver on an ongoing trip is refused with 409. Admins are refused. | done |
 
 ## Admin accounts (`/api/admin/users`) — admin only
 | Method | Path | Role | Purpose | Status |

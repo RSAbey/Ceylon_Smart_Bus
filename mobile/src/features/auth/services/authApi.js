@@ -36,3 +36,26 @@ export async function resendRegistrationOtp(userId) {
   const resendEnvelope = await apiClient.post('/auth/resend-otp', { userId });
   return resendEnvelope.data;
 }
+
+/**
+ * Asks for a password-reset code to be emailed. The answer is the same whether or not the address
+ * has an account, so this cannot be used to find out who is registered.
+ * @param {string} email - The address typed on the Reset password screen.
+ * @returns {Promise<object>} When the code expires, when it can be resent, and in development the code.
+ */
+export async function requestPasswordReset(email) {
+  const resetEnvelope = await apiClient.post('/auth/forgot-password', { email });
+  return resetEnvelope.data;
+}
+
+/**
+ * Finishes a reset with the emailed code.
+ * @param {object} resetForm - What the screen collected.
+ * @param {string} resetForm.email - The account's email address.
+ * @param {string} resetForm.otpCode - The six digits from the email.
+ * @param {string} resetForm.newPassword - The password to store.
+ * @returns {Promise<void>} Resolves once the new password is stored.
+ */
+export async function resetPassword({ email, otpCode, newPassword }) {
+  await apiClient.post('/auth/reset-password', { email, otpCode, newPassword });
+}

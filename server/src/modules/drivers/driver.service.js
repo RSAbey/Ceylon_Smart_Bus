@@ -12,6 +12,7 @@ const { USER_STATUSES } = require('../users/user.constants');
 const User = require('../users/user.model');
 const { USER_ROLES } = require('../users/user.constants');
 const { BCRYPT_SALT_ROUNDS } = require('../auth/auth.constants');
+const { purgeUserAndOwnedData } = require('../users/accountPurge.service');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 
@@ -300,8 +301,9 @@ async function assignBusToDriver(driverId, busId) {
  */
 async function deleteDriver(driverId) {
   const driverProfile = await getDriverById(driverId);
-  await DriverProfile.findByIdAndDelete(driverId);
-  await User.findByIdAndDelete(driverProfile.userId.id);
+  // The same clean-up the driver would get by deleting their own account: the bus goes back to the
+  // pool and nothing is left pointing at an account that no longer exists.
+  await purgeUserAndOwnedData(driverProfile.userId.id);
 }
 
 module.exports = {
