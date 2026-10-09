@@ -285,8 +285,47 @@ If you change a signature, tell the group chat **before** merging.
 ## 10. Build & release
 
 ### Android APK, built on this laptop (no account, no cloud)
-Needs the Android SDK (Android Studio installs it) and a JDK. `mobile/android/` is generated and
-git-ignored, so it is rebuilt from `app.config.js` rather than edited by hand.
+Needs the Android SDK (Android Studio installs it) and **JDK 17 or 21**. `mobile/android/` is
+generated and git-ignored, so it is rebuilt from `app.config.js` rather than edited by hand.
+
+> **Use JDK 17 or 21, not 24 or newer.** On JDK 24+ the native build steps fail with
+> `Execution failed for task ':react-native-screens:configureCMakeRelWithDebInfo[arm64-v8a]'` and
+> the single line `WARNING: A restricted method in java.lang.System has been called`. That warning
+> is not the real problem in itself — the Android Gradle plugin treats anything the CMake step
+> writes to stderr as a failure, and JDK 24 restricted the native access those tools use. It costs
+> 25 minutes to find out, because it fails late. Point `JAVA_HOME` at a JDK 21 for the build:
+> ```bash
+> export JAVA_HOME="/c/Program Files/Java/jdk-21"   # PowerShell: $env:JAVA_HOME="C:\Program Files\Java\jdk-21"
+> ```
+
+> **Build from a short path on Windows.** The C++ parts of `react-native-screens` and
+> `react-native-worklets` fail when the repository sits somewhere deep. What ninja prints is
+> `ninja: error: manifest 'build.ninja' still dirty after 100 tries`, but the real reason is further
+> up the log: `The object file directory ... has 204 characters. The maximum full path to an object
+> file is 250 characters`. Windows cannot write the object files, so CMake regenerates for ever and
+> ninja gives up. A path such as `E:\Documents\University\3rd Year\...\Ceylon_Smart_Bus` is already
+> too deep before `node_modules` is added to it.
+>
+> **The clone has to actually be at a short path. An alias does not work** — this was tried and it
+> does not, so do not spend an evening on it:
+> - A **junction** (`New-Item -ItemType Junction`) is a reparse point. Gradle keeps the short path,
+>   but Node resolves its own files back to the real one, and bundling dies with
+>   `this and base files have different roots`.
+> - A **`subst` drive** survives `fs.realpath` and Java's `getCanonicalPath`, so it looks promising —
+>   but `expo-modules-autolinking` writes the *real* path of every native module into
+>   `mobile/android/build/generated/autolinking/autolinking.json`, and CMake follows what is written
+>   there whatever drive Gradle was run from. The long path comes straight back.
+>
+> So: `git clone` into `C:\dev\Ceylon_Smart_Bus` (or move the folder there) and build from there.
+>
+> If you do change path, delete the generated output first, or nothing changes:
+> ```bash
+> rm -rf mobile/android/build mobile/android/app/build mobile/android/.gradle
+> rm -rf mobile/node_modules/*/android/.cxx
+> ```
+>
+> Building on EAS avoids all of this, because it builds on Linux where these limits do not exist.
+
 ```bash
 cd mobile
 npx expo prebuild --platform android --clean     # regenerates android/ from app.config.js
