@@ -16,6 +16,7 @@ import {
   ADMIN_MESSAGES,
   BUS_MODELS,
   BUS_STATUSES,
+  BUS_STATUS_LABELS,
   DATE_INPUT_HINT,
   DATE_INPUT_PATTERN,
   PLATE_NUMBER_PATTERN,
@@ -241,7 +242,7 @@ export default function AdminBusFormScreen() {
         label="Status"
         options={Object.values(BUS_STATUSES).map((statusValue) => ({
           key: statusValue,
-          label: statusValue,
+          label: BUS_STATUS_LABELS[statusValue],
         }))}
         selectedKey={status}
         onSelect={setStatus}

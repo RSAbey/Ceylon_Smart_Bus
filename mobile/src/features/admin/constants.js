@@ -38,6 +38,12 @@ export const SEVERITY_TONES = Object.freeze({
   [ANNOUNCEMENT_SEVERITIES.CRITICAL]: 'error',
 });
 
+export const ANNOUNCEMENT_STATUS_LABELS = Object.freeze({
+  [ANNOUNCEMENT_STATUSES.DRAFT]: 'Draft',
+  [ANNOUNCEMENT_STATUSES.PUBLISHED]: 'Published',
+  [ANNOUNCEMENT_STATUSES.ARCHIVED]: 'Archived',
+});
+
 export const ANNOUNCEMENT_STATUS_TONES = Object.freeze({
   [ANNOUNCEMENT_STATUSES.DRAFT]: 'neutral',
   [ANNOUNCEMENT_STATUSES.PUBLISHED]: 'success',
@@ -51,10 +57,22 @@ export const INQUIRY_STATUSES = Object.freeze({
   CLOSED: 'closed',
 });
 
+export const INQUIRY_STATUS_LABELS = Object.freeze({
+  [INQUIRY_STATUSES.OPEN]: 'Open',
+  [INQUIRY_STATUSES.REPLIED]: 'Replied',
+  [INQUIRY_STATUSES.CLOSED]: 'Closed',
+});
+
 export const INQUIRY_STATUS_TONES = Object.freeze({
   [INQUIRY_STATUSES.OPEN]: 'warning',
   [INQUIRY_STATUSES.REPLIED]: 'information',
   [INQUIRY_STATUSES.CLOSED]: 'success',
+});
+
+export const INQUIRY_PRIORITY_LABELS = Object.freeze({
+  high: 'High priority',
+  medium: 'Medium priority',
+  low: 'Low priority',
 });
 
 export const INQUIRY_PRIORITY_TONES = Object.freeze({
@@ -81,6 +99,12 @@ export const ROUTE_STATUSES = Object.freeze({
   SUSPENDED: 'suspended',
 });
 
+export const ROUTE_STATUS_LABELS = Object.freeze({
+  [ROUTE_STATUSES.ACTIVE]: 'Active',
+  [ROUTE_STATUSES.DRAFT]: 'Draft',
+  [ROUTE_STATUSES.SUSPENDED]: 'Suspended',
+});
+
 export const ROUTE_STATUS_TONES = Object.freeze({
   [ROUTE_STATUSES.ACTIVE]: 'success',
   [ROUTE_STATUSES.DRAFT]: 'neutral',
@@ -92,6 +116,12 @@ export const BUS_STATUSES = Object.freeze({
   ACTIVE: 'active',
   MAINTENANCE: 'maintenance',
   RETIRED: 'retired',
+});
+
+export const BUS_STATUS_LABELS = Object.freeze({
+  [BUS_STATUSES.ACTIVE]: 'Active',
+  [BUS_STATUSES.MAINTENANCE]: 'Maintenance',
+  [BUS_STATUSES.RETIRED]: 'Retired',
 });
 
 export const BUS_STATUS_TONES = Object.freeze({

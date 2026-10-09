@@ -75,6 +75,21 @@ The mobile bus form originally checked only that the plate was not empty, while 
 `AB-1234`. A plate like `ABC` would have been accepted by the form and refused by the server. The
 form now applies the same pattern, so the error arrives before the request does.
 
+## Fixed after the first run on a device
+
+**The filter chips filled the screen.** A React Native `ScrollView` gives itself `flexGrow: 1`, so
+the horizontal chip row absorbed every spare pixel of height inside the screen's own scroll view,
+and because a row container stretches its children by default the chips grew with it — four pills
+roughly 400 px tall. The row is now `flexGrow: 0` and its content is centred on the cross axis, so
+each chip is exactly one touch target high whatever is below it. Both halves matter: without the
+first the row still steals the space, without the second the chips still stretch inside it.
+
+**Statuses were shown as raw enum values.** Chips and pickers printed `active`, `maintenance`,
+`draft` straight from the API beside properly capitalised labels. Every status enum now has a label
+map in `mobile/src/features/admin/constants.js`, used by the filter chips, the record cards and the
+form pickers alike. Counts also moved into a badge inside the chip, so "All 1" reads as "All" with a
+1 beside it rather than as a single phrase.
+
 ## Not verified
 
 Nothing in this area has been run on a device. The API side is covered by a 71-assertion script

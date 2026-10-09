@@ -1,8 +1,50 @@
 // The filter chips above an admin list, the phone version of the dashboard's filter row. Each chip
-// carries its own count, which is how an administrator sees there are 3 drafts without opening the
-// filter at all.
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+// carries its own count in a badge, which is how an administrator sees there are 3 drafts without
+// opening the filter at all.
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MIN_TOUCH_TARGET, colors, radii, sizes, spacing, typography } from '../../../theme';
+
+/**
+ * One filter chip.
+ * @param {object} props - Component props.
+ * @param {object} props.filterChip - { key, label, count }; count may be undefined.
+ * @param {boolean} props.isSelected - Whether this filter is the one applied.
+ * @param {Function} props.onPress - Applies this filter.
+ * @returns {import('react').JSX.Element} The chip.
+ */
+function FilterChip({ filterChip, isSelected, onPress }) {
+  const hasCount = filterChip.count !== undefined;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}
+      accessibilityLabel={hasCount ? `${filterChip.label}, ${filterChip.count}` : filterChip.label}
+      style={({ pressed }) => [
+        styles.chip,
+        isSelected && styles.chipSelected,
+        pressed && !isSelected && styles.chipPressed,
+      ]}
+    >
+      <Text style={[typography.bodySmall, isSelected ? styles.chipTextSelected : styles.chipText]}>
+        {filterChip.label}
+      </Text>
+      {hasCount && (
+        <View style={[styles.countBadge, isSelected && styles.countBadgeSelected]}>
+          <Text
+            style={[
+              typography.caption,
+              isSelected ? styles.countTextSelected : styles.countText,
+            ]}
+          >
+            {filterChip.count}
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
 
 /**
  * A scrolling row of filter chips.
@@ -17,53 +59,39 @@ export default function FilterChipRow({ chips, selectedKey, onSelect }) {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.chipRow}
+      // A ScrollView gives itself flexGrow: 1, so inside a scrolling screen this row would swallow
+      // every spare pixel of height and the chips would stretch down the page with it.
+      style={styles.row}
+      contentContainerStyle={styles.rowContent}
     >
-      {chips.map((filterChip) => {
-        const isSelected = filterChip.key === selectedKey;
-        return (
-          <Pressable
-            key={filterChip.key}
-            onPress={() => onSelect(filterChip.key)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isSelected }}
-            accessibilityLabel={
-              filterChip.count === undefined
-                ? filterChip.label
-                : `${filterChip.label}, ${filterChip.count}`
-            }
-            style={({ pressed }) => [
-              styles.chip,
-              isSelected && styles.chipSelected,
-              pressed && styles.chipPressed,
-            ]}
-          >
-            <Text
-              style={[
-                typography.bodySmall,
-                isSelected ? styles.chipTextSelected : styles.chipText,
-              ]}
-            >
-              {filterChip.count === undefined
-                ? filterChip.label
-                : `${filterChip.label} ${filterChip.count}`}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {chips.map((filterChip) => (
+        <FilterChip
+          key={filterChip.key}
+          filterChip={filterChip}
+          isSelected={filterChip.key === selectedKey}
+          onPress={() => onSelect(filterChip.key)}
+        />
+      ))}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  chipRow: {
+  row: {
+    flexGrow: 0,
+  },
+  rowContent: {
     flexDirection: 'row',
+    // Without this the chips stretch to the full height of the row rather than hugging their text.
+    alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.xxs,
   },
   chip: {
-    justifyContent: 'center',
-    minHeight: MIN_TOUCH_TARGET,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    height: MIN_TOUCH_TARGET,
     paddingHorizontal: spacing.lg,
     borderRadius: radii.pill,
     borderWidth: sizes.borderThin,
@@ -81,6 +109,22 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
   },
   chipTextSelected: {
+    color: colors.text.onColor,
+  },
+  countBadge: {
+    minWidth: sizes.iconMedium,
+    paddingHorizontal: spacing.xs,
+    borderRadius: radii.pill,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+  },
+  countBadgeSelected: {
+    backgroundColor: colors.primary[500],
+  },
+  countText: {
+    color: colors.text.secondary,
+  },
+  countTextSelected: {
     color: colors.text.onColor,
   },
 });

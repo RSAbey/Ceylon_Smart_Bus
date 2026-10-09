@@ -14,7 +14,12 @@ import { useToast } from '../../../components/ui/ToastMessage';
 import useAdminCollection from '../hooks/useAdminCollection';
 import FilterChipRow from '../components/FilterChipRow';
 import AdminRecordCard from '../components/AdminRecordCard';
-import { ADMIN_MESSAGES, ROUTE_STATUSES, ROUTE_STATUS_TONES } from '../constants';
+import {
+  ADMIN_MESSAGES,
+  ROUTE_STATUSES,
+  ROUTE_STATUS_LABELS,
+  ROUTE_STATUS_TONES,
+} from '../constants';
 import { deleteRoute, fetchRouteTable } from '../services/adminRouteApi';
 
 const ALL_STATUSES = 'all';
@@ -124,7 +129,11 @@ export default function AdminRoutesScreen() {
               title={`${route.routeNumber} · ${route.routeName}`}
               subtitle={`${route.origin} to ${route.destination}`}
               chips={[
-                { key: 'status', label: route.status, tone: ROUTE_STATUS_TONES[route.status] },
+                {
+                  key: 'status',
+                  label: ROUTE_STATUS_LABELS[route.status] || route.status,
+                  tone: ROUTE_STATUS_TONES[route.status],
+                },
                 {
                   key: 'running',
                   label: `${routeRow.runningTripCount} running now`,

@@ -15,7 +15,12 @@ import { useToast } from '../../../components/ui/ToastMessage';
 import { colors, typography } from '../../../theme';
 import AdminPickerField from '../components/AdminPickerField';
 import RouteStopEditor from '../components/RouteStopEditor';
-import { ADMIN_MESSAGES, ROUTE_STATUSES, SERVICE_TIME_PATTERN } from '../constants';
+import {
+  ADMIN_MESSAGES,
+  ROUTE_STATUSES,
+  ROUTE_STATUS_LABELS,
+  SERVICE_TIME_PATTERN,
+} from '../constants';
 import {
   createRoute,
   fetchRouteDetails,
@@ -231,7 +236,7 @@ export default function AdminRouteFormScreen() {
 
   const statusOptions = Object.values(ROUTE_STATUSES).map((statusValue) => ({
     key: statusValue,
-    label: statusValue,
+    label: ROUTE_STATUS_LABELS[statusValue],
   }));
 
   const screenHeader = (

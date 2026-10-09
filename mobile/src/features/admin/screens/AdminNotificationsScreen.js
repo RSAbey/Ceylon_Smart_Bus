@@ -21,6 +21,7 @@ import AdminRecordCard from '../components/AdminRecordCard';
 import {
   ADMIN_MESSAGES,
   ANNOUNCEMENT_STATUSES,
+  ANNOUNCEMENT_STATUS_LABELS,
   ANNOUNCEMENT_STATUS_TONES,
   SEVERITY_LABELS,
   SEVERITY_TONES,
@@ -222,7 +223,7 @@ export default function AdminNotificationsScreen() {
                 },
                 {
                   key: 'status',
-                  label: announcement.status,
+                  label: ANNOUNCEMENT_STATUS_LABELS[announcement.status] || announcement.status,
                   tone: ANNOUNCEMENT_STATUS_TONES[announcement.status],
                 },
               ]}

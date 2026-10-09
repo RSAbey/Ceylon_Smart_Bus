@@ -19,6 +19,7 @@ import AdminRecordCard from '../components/AdminRecordCard';
 import {
   ADMIN_MESSAGES,
   BUS_STATUSES,
+  BUS_STATUS_LABELS,
   BUS_STATUS_TONES,
   DRIVER_DUTY_STATUSES,
   DUTY_STATUS_LABELS,
@@ -80,7 +81,9 @@ export default function AdminTransportScreen() {
       { key: ALL_STATUSES, label: ADMIN_MESSAGES.allFilterLabel, count: collection?.totalCount },
       ...statusValues.map((statusValue) => ({
         key: statusValue,
-        label: isShowingBuses ? statusValue : DUTY_STATUS_LABELS[statusValue],
+        label: isShowingBuses
+          ? BUS_STATUS_LABELS[statusValue]
+          : DUTY_STATUS_LABELS[statusValue],
       })),
     ];
   }, [isShowingBuses, collection]);
@@ -176,7 +179,11 @@ export default function AdminTransportScreen() {
             title={`${fleetBus.busCode} · ${fleetBus.plateNumber}`}
             subtitle={`${fleetBus.busName} · ${fleetBus.model}`}
             chips={[
-              { key: 'status', label: fleetBus.status, tone: BUS_STATUS_TONES[fleetBus.status] },
+              {
+                key: 'status',
+                label: BUS_STATUS_LABELS[fleetBus.status] || fleetBus.status,
+                tone: BUS_STATUS_TONES[fleetBus.status],
+              },
               { key: 'seats', label: `${fleetBus.capacity} seats`, tone: 'neutral' },
             ]}
             detailLines={[

@@ -16,8 +16,10 @@ import { useAuth } from '../../../context/AuthContext';
 import { colors, radii, spacing, typography } from '../../../theme';
 import AdminStatusChip from '../components/AdminStatusChip';
 import {
+  INQUIRY_PRIORITY_LABELS,
   INQUIRY_PRIORITY_TONES,
   INQUIRY_STATUSES,
+  INQUIRY_STATUS_LABELS,
   INQUIRY_STATUS_TONES,
   INQUIRY_TAG_LABELS,
 } from '../constants';
@@ -173,9 +175,12 @@ export default function AdminInquiryDetailScreen() {
         <View style={styles.headingBlock}>
           <Text style={typography.heading3}>{inquiry.subject}</Text>
           <View style={styles.chipRow}>
-            <AdminStatusChip label={inquiry.status} tone={INQUIRY_STATUS_TONES[inquiry.status]} />
             <AdminStatusChip
-              label={`${inquiry.priority} priority`}
+              label={INQUIRY_STATUS_LABELS[inquiry.status] || inquiry.status}
+              tone={INQUIRY_STATUS_TONES[inquiry.status]}
+            />
+            <AdminStatusChip
+              label={INQUIRY_PRIORITY_LABELS[inquiry.priority] || inquiry.priority}
               tone={INQUIRY_PRIORITY_TONES[inquiry.priority]}
             />
             <AdminStatusChip label={INQUIRY_TAG_LABELS[inquiry.tag] || inquiry.tag} />

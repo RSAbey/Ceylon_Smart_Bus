@@ -17,8 +17,10 @@ import FilterChipRow from '../components/FilterChipRow';
 import AdminRecordCard from '../components/AdminRecordCard';
 import {
   ADMIN_MESSAGES,
+  INQUIRY_PRIORITY_LABELS,
   INQUIRY_PRIORITY_TONES,
   INQUIRY_STATUSES,
+  INQUIRY_STATUS_LABELS,
   INQUIRY_STATUS_TONES,
   INQUIRY_TAG_LABELS,
 } from '../constants';
@@ -126,12 +128,12 @@ export default function AdminInquiriesScreen() {
           const inquiryChips = [
             {
               key: 'status',
-              label: inquiry.status,
+              label: INQUIRY_STATUS_LABELS[inquiry.status] || inquiry.status,
               tone: INQUIRY_STATUS_TONES[inquiry.status],
             },
             {
               key: 'priority',
-              label: `${inquiry.priority} priority`,
+              label: INQUIRY_PRIORITY_LABELS[inquiry.priority] || inquiry.priority,
               tone: INQUIRY_PRIORITY_TONES[inquiry.priority],
             },
           ];

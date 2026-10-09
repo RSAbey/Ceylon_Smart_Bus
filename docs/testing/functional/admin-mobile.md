@@ -97,6 +97,9 @@ credentials as the dashboard — there is no separate admin login.
 | TC-AM55 | Empty | Signed in as admin | Filter or search so nothing matches, in each section | Each shows an empty state saying what to do next | | | NFR-10 |
 | TC-AM56 | Error and retry | Signed in as admin | Stop the API, open a section, start the API, press Retry | An error state with the server's message, and Retry loads the list | | | NFR-10 |
 | TC-AM57 | Success | Signed in as admin | Save something in each section | A toast confirms each time, and the list behind it already shows the change | | | NFR-10 |
+| TC-AM58 | Filter chips are the right height | Signed in as admin | Open Routes, then Transport, with only one record in the list | Each chip is one row high, about a thumb's height, not a tall pill filling the screen | | | NFR-10 |
+| TC-AM59 | Chip counts read as counts | As TC-AM58 | Look at the Routes chips | The count sits in its own badge beside the word, not run together as "All 1" | | | NFR-10 |
+| TC-AM60 | Statuses are shown in words | As TC-AM58 | Look at the chips, cards and form pickers | Capitalised labels such as Active, Maintenance, Draft — never the raw `active` or `on_leave` | | | NFR-10 |
 
 ---
 
