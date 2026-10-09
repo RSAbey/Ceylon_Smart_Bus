@@ -10,9 +10,14 @@ import AppHeader from '../../../components/navigation/AppHeader';
 import AppCard from '../../../components/ui/AppCard';
 import LoadingState from '../../../components/feedback/LoadingState';
 import ErrorState from '../../../components/feedback/ErrorState';
+import EmptyState from '../../../components/feedback/EmptyState';
 import { colors, radii, sizes, spacing, typography } from '../../../theme';
 import { fetchSeatMap } from '../services/seatApi';
+import { groupSeatsIntoRows } from '../seatRows';
 import { AISLE_WIDTH, SEAT_MESSAGES, SEAT_SQUARE_SIZE } from '../constants';
+
+/** Seats sit 2 + 2 across the aisle, so half a row goes on each side of it. */
+const SIDES_PER_ROW = 2;
 
 /** The two states a seat can be in on this screen; the driver never selects one. */
 const DRIVER_SEAT_LEGEND = Object.freeze([
@@ -103,6 +108,21 @@ export default function DriverSeatMapScreen() {
     );
   }
 
+  const seatRows = groupSeatsIntoRows(seatMap.seats, seatMap.seatsPerRow);
+  const halfRow = seatMap.seatsPerRow / SIDES_PER_ROW;
+
+  if (seatRows.length === 0) {
+    return (
+      <ScreenContainer header={screenHeader}>
+        <EmptyState
+          iconName="bus-outline"
+          title={SEAT_MESSAGES.noSeatsRecorded}
+          message="Ask the depot to set the bus capacity before the next run."
+        />
+      </ScreenContainer>
+    );
+  }
+
   return (
     <ScreenContainer header={screenHeader} isScrollable>
       <AppCard>
@@ -139,23 +159,20 @@ export default function DriverSeatMapScreen() {
         <Text style={[typography.caption, styles.mutedText, styles.frontLabel]}>
           {SEAT_MESSAGES.frontOfBus}
         </Text>
-        {seatMap.seats.map((seatRow, rowIndex) => {
-          const halfRow = Math.ceil(seatRow.length / 2);
-          return (
-            <View key={seatRow[0]?.seatNumber || rowIndex} style={styles.seatRow}>
-              {seatRow.slice(0, halfRow).map((seat) => (
-                <SeatSquare key={seat.seatNumber} seat={seat} />
-              ))}
-              {/* The aisle carries the row number, exactly as a conductor reads the bus. */}
-              <View style={styles.aisle}>
-                <Text style={[typography.caption, styles.mutedText]}>{rowIndex + 1}</Text>
-              </View>
-              {seatRow.slice(halfRow).map((seat) => (
-                <SeatSquare key={seat.seatNumber} seat={seat} />
-              ))}
+        {seatRows.map((seatRow, rowIndex) => (
+          <View key={seatRow[0].seatNumber} style={styles.seatRow}>
+            {seatRow.slice(0, halfRow).map((seat) => (
+              <SeatSquare key={seat.seatNumber} seat={seat} />
+            ))}
+            {/* The aisle carries the row number, exactly as a conductor reads the bus. */}
+            <View style={styles.aisle}>
+              <Text style={[typography.caption, styles.mutedText]}>{rowIndex + 1}</Text>
             </View>
-          );
-        })}
+            {seatRow.slice(halfRow).map((seat) => (
+              <SeatSquare key={seat.seatNumber} seat={seat} />
+            ))}
+          </View>
+        ))}
       </AppCard>
     </ScreenContainer>
   );

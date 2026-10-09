@@ -14,6 +14,7 @@ import EmptyState from '../../../components/feedback/EmptyState';
 import { useToast } from '../../../components/ui/ToastMessage';
 import { colors, radii, sizes, spacing, typography } from '../../../theme';
 import { fetchSeatMap } from '../services/seatApi';
+import { groupSeatsIntoRows } from '../seatRows';
 import { createTicket, updateTicket } from '../../tickets/services/ticketApi';
 import { CURRENCY_PREFIX } from '../../tickets/constants';
 import { formatDepartureTime } from '../../tickets/formatters';
@@ -36,20 +37,6 @@ function resolveSeatState(seat, chosenSeatNumbers) {
   if (chosenSeatNumbers.includes(seat.seatNumber)) return SEAT_STATES.SELECTED;
   if (seat.isBooked) return SEAT_STATES.BOOKED;
   return SEAT_STATES.AVAILABLE;
-}
-
-/**
- * Splits the flat seat list into rows of four so the map can be drawn.
- * @param {object[]} seats - Seats in map order.
- * @param {number} seatsPerRow - How many seats sit across the bus.
- * @returns {Array<object[]>} Seats grouped into rows.
- */
-function groupSeatsIntoRows(seats, seatsPerRow) {
-  const seatRows = [];
-  for (let rowStart = 0; rowStart < seats.length; rowStart += seatsPerRow) {
-    seatRows.push(seats.slice(rowStart, rowStart + seatsPerRow));
-  }
-  return seatRows;
 }
 
 /**

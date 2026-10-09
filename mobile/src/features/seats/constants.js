@@ -24,6 +24,7 @@ export const SEAT_MESSAGES = Object.freeze({
   chooseSeat: 'Tap a free seat to choose it.',
   noSeatChosen: 'Choose a seat before you continue.',
   fullBus: 'Every seat on this bus is taken.',
+  noSeatsRecorded: 'This bus has no seats recorded.',
   frontOfBus: 'Front of bus',
   driver: 'Driver',
 });

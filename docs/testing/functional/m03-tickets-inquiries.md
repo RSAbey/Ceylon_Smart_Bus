@@ -65,6 +65,7 @@ has started a trip so a bus is in service. Passenger account: `kasun.wijesinghe@
 | TC-S07 | Driver seat map opens | Driver on a trip with a booking | Bookings → Open the seat map | The seat map opens and stays open; it does not bounce back to the driver home | | | FR-06 |
 | TC-S08 | Driver seat map is read only | As TC-S07 | Tap a free seat | Nothing is selected and no ticket flow starts; taken seats carry a cross as well as their colour | | | FR-06, NFR-09 |
 | TC-S09 | Driver seat map counts | As TC-S07 | Compare the header with the Bookings list | "x of y seats taken" matches the seats reserved on that trip | | | FR-06 |
+| TC-S10 | Driver seat map draws the bus | As TC-S07 | Look at the map itself | Rows of 2 + 2 with the row number down the aisle, one row per four seats, and no render error | | | FR-06 |
 
 ## Inquiries (I)
 
@@ -132,6 +133,8 @@ refund through to the wallet balance, the cancelled ticket, the released seat an
 A third script covered the inquiry inbox on 2026-10-08: **42 assertions, all passing**, covering the counts and
 every filter, assigning (including the refusal to assign to someone who is not an administrator), replying through
 to the passenger's own thread and alert, and closing, reopening and the refusals around both.
+
+A fourth script covered the driver's seat map on 2026-10-09, after it crashed on the device with "undefined is not a function": **13 assertions, all passing**. It reads the grouping function out of the app source and runs it over the live seat map for the trip the seeded driver is on (52 seats, 13 rows), checking that the API really sends a flat seat list with `seatsPerRow` beside it, that no seat is lost or duplicated by the grouping, that the A and B seats land left of the aisle and the C and D seats right of it, and that a short last row keeps both its seats on the left.
 
 That is a developer check on localhost, **not** the device testing this table records. Every Actual / Pass-Fail cell
 above stays empty until the case is run on the APK and the hosted admin dashboard.
