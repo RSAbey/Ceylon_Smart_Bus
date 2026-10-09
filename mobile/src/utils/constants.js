@@ -49,6 +49,7 @@ export const USER_ROLES = Object.freeze({
 export const ROLE_HOME_ROUTES = Object.freeze({
   [USER_ROLES.PASSENGER]: '/(passenger)/(tabs)/home',
   [USER_ROLES.DRIVER]: '/(driver)/(tabs)/home',
+  [USER_ROLES.ADMIN]: '/(admin)/(tabs)/notifications',
 });
 
 export const LOGIN_ROUTE = '/(auth)/login';

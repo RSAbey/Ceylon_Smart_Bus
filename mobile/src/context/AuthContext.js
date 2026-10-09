@@ -8,9 +8,6 @@ import {
   saveAccessToken,
 } from '../utils/tokenStorage';
 import { clearAppLockState } from '../utils/appLockStorage';
-import { USER_ROLES } from '../utils/constants';
-
-const ADMIN_ON_MOBILE_MESSAGE = 'Admins use the web dashboard. Please sign in there.';
 
 const AuthContext = createContext(null);
 
@@ -41,10 +38,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const applySession = useCallback(async (issuedToken, signedInUser, shouldRemember = true) => {
-    // The mobile app is for passengers and drivers only; admins are never given a mobile session.
-    if (signedInUser.role === USER_ROLES.ADMIN) {
-      throw { message: ADMIN_ON_MOBILE_MESSAGE, status: 0, fieldErrors: {} };
-    }
+    // Every role signs in here now: an admin lands in the (admin) route group, which carries the
+    // management screens the web dashboard has.
     await saveAccessToken(issuedToken, shouldRemember);
     setToken(issuedToken);
     setUser(signedInUser);

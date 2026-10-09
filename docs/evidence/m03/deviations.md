@@ -45,3 +45,10 @@
 - **`validUntil` is 24 hours** from purchase (`TICKET_VALID_HOURS`). Nothing sweeps expired tickets on a schedule —
   verification compares `validUntil` to the current time when the driver checks, so an out-of-date ticket is refused
   correctly even though its stored `status` still reads `active`.
+
+## The admin area of the mobile app
+
+Four of the dashboard's management sections were rebuilt inside the mobile app against the same
+API, one of them this member's. What was built, and every way the phone version differs from the
+dashboard, is written up once in **`docs/evidence/admin-mobile-app.md`** rather than repeated in
+each member's file. Test cases: `docs/testing/functional/admin-mobile.md`.

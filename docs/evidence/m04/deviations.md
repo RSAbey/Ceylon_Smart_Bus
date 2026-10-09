@@ -65,3 +65,10 @@ stop Details panel expands without breaking the layout.
 | Avatar with a dropdown in the page header | The signed-in name already sits in the top bar and opens My profile | One place for the account, not two. |
 | Light sidebar (earlier build) | Dark navy sidebar with the current page as a solid blue block | Matches admin screens 59 and 60, which both show dark chrome. The colours are tokens (`--color-chrome*`) rather than hex in a screen. |
 | Hamburger beside the page title on desktop | Only below 900px, where the sidebar is off-canvas | It was showing at every width: the shared `.icon-button` rule sits later in the stylesheet and was overriding `display: none`. The rule is now scoped to the top bar so it wins. |
+
+## The admin area of the mobile app
+
+Four of the dashboard's management sections were rebuilt inside the mobile app against the same
+API, one of them this member's. What was built, and every way the phone version differs from the
+dashboard, is written up once in **`docs/evidence/admin-mobile-app.md`** rather than repeated in
+each member's file. Test cases: `docs/testing/functional/admin-mobile.md`.

@@ -23,6 +23,7 @@ const AUTH_ROUTE_GROUP = '(auth)';
 const ROLE_ROUTE_GROUPS = Object.freeze({
   [USER_ROLES.PASSENGER]: '(passenger)',
   [USER_ROLES.DRIVER]: '(driver)',
+  [USER_ROLES.ADMIN]: '(admin)',
 });
 
 /**

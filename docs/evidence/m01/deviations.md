@@ -121,3 +121,10 @@ what the API trusts, so anyone holding a stolen token could still call the API d
 screen lock in the sense a phone's own lock screen is, and the report should not claim more.
 
 **Data model.** Two columns on `USER`, written up in `docs/evidence/m01/erd-changes.md`.
+
+## The admin area of the mobile app
+
+Four of the dashboard's management sections were rebuilt inside the mobile app against the same
+API, one of them this member's. What was built, and every way the phone version differs from the
+dashboard, is written up once in **`docs/evidence/admin-mobile-app.md`** rather than repeated in
+each member's file. Test cases: `docs/testing/functional/admin-mobile.md`.

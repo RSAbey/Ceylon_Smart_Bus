@@ -31,3 +31,10 @@
 | — | The map says so when it cannot load | Leaflet and the tiles come over the network. If they fail the screen shows one honest line and the stops, ETA and status below it still work, instead of a blank rectangle. |
 
 **Switching back to Google Maps**, if a key and a development build become available: `npx expo install react-native-maps`, restore the two map blocks from git history (commit before this one), and put `android.config.googleMaps.apiKey` back in `app.config.js` reading `GOOGLE_MAPS_API_KEY`.
+
+## The admin area of the mobile app
+
+Four of the dashboard's management sections were rebuilt inside the mobile app against the same
+API, one of them this member's. What was built, and every way the phone version differs from the
+dashboard, is written up once in **`docs/evidence/admin-mobile-app.md`** rather than repeated in
+each member's file. Test cases: `docs/testing/functional/admin-mobile.md`.
