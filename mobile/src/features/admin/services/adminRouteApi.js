@@ -54,3 +54,18 @@ export async function updateRoute(routeId, routeChanges) {
 export async function deleteRoute(routeId) {
   await apiClient.delete(`/admin/routes/${routeId}`);
 }
+
+/**
+ * Places matching what was typed into a stop name, so a stop is chosen from a list instead of its
+ * coordinates being typed. Answered by OpenStreetMap's own geocoder through our API, which is the
+ * same source the maps are drawn from — so a chosen stop sits where the map shows it.
+ * @param {string} queryText - What the administrator typed.
+ * @returns {Promise<Array<{placeId: string, stopName: string, description: string,
+ *   latitude: number, longitude: number}>>} Suggestions, nearest match first.
+ */
+export async function fetchPlaceSuggestions(queryText) {
+  const suggestionEnvelope = await apiClient.get('/admin/routes/place-suggestions', {
+    params: { query: queryText },
+  });
+  return suggestionEnvelope.data.suggestions;
+}

@@ -134,6 +134,28 @@ export default function AdminRouteFormScreen() {
     );
   };
 
+  /**
+   * Fills one stop from a place chosen out of the suggestion list: the name and the position
+   * together, which is the whole point of picking from a list rather than typing.
+   * @param {number} stopIndex - Row being filled.
+   * @param {object} chosenPlace - The place that was chosen.
+   * @returns {void}
+   */
+  const takePlaceForStop = (stopIndex, chosenPlace) => {
+    setStops((previousStops) =>
+      previousStops.map((previousStop, previousIndex) =>
+        previousIndex === stopIndex
+          ? {
+              ...previousStop,
+              stopName: chosenPlace.stopName,
+              latitude: String(chosenPlace.latitude),
+              longitude: String(chosenPlace.longitude),
+            }
+          : previousStop
+      )
+    );
+  };
+
   const moveStop = (stopIndex, places) => {
     setStops((previousStops) => {
       const reorderedStops = [...previousStops];
@@ -339,6 +361,7 @@ export default function AdminRouteFormScreen() {
         stops={stops}
         stopErrors={stopErrors}
         onChangeStop={changeStop}
+        onChoosePlaceForStop={takePlaceForStop}
         onMoveStop={moveStop}
         onRemoveStop={removeStop}
         onAddStop={addStop}

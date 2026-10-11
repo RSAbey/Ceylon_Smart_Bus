@@ -165,6 +165,13 @@ export const DUTY_STATUS_TONES = Object.freeze({
   [DRIVER_DUTY_STATUSES.SUSPENDED]: 'error',
 });
 
+/** Wait this long after the last keystroke before asking for place suggestions. The geocoder asks
+ *  for no more than one request a second, and nobody wants a request per letter either. */
+export const PLACE_SEARCH_DEBOUNCE_MS = 450;
+
+/** Below this many characters a search is not worth making. Matches the server's own rule. */
+export const MIN_PLACE_QUERY_LENGTH = 2;
+
 /** Dates are typed, not picked: the project adds no date-picker library for four fields. */
 export const DATE_INPUT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export const DATE_INPUT_HINT = 'YYYY-MM-DD';
@@ -184,6 +191,10 @@ export const ADMIN_MESSAGES = Object.freeze({
   requiredField: 'This cannot be empty.',
   invalidDate: `Enter the date as ${DATE_INPUT_HINT}.`,
   invalidTime: 'Enter the time as HH:MM on a 24-hour clock.',
+  placeSearchHint: 'Type a place and pick it from the list — the position fills itself in.',
+  placeSearching: 'Looking for places...',
+  noPlacesFound: 'No place of that name was found. Type the position below instead.',
+  positionFromMap: 'Position taken from the map',
   deleteTitle: 'Delete this record?',
   deleteConfirmLabel: 'Delete',
 });

@@ -7,6 +7,7 @@ import AppCard from '../../../components/ui/AppCard';
 import AppButton from '../../../components/ui/AppButton';
 import AppTextInput from '../../../components/ui/AppTextInput';
 import { colors, spacing, typography } from '../../../theme';
+import StopPlaceField from './StopPlaceField';
 
 const FIRST_STOP_INDEX = 0;
 const ONE_PLACE = 1;
@@ -18,6 +19,8 @@ const ONE_PLACE = 1;
  *   longitude and fareFromOrigin as strings, because they are typed.
  * @param {Object<string, string>} props.stopErrors - Error text per "index.field" key.
  * @param {Function} props.onChangeStop - Called with (index, fieldName, typedText).
+ * @param {Function} props.onChoosePlaceForStop - Called with (index, place) when a place is picked
+ *   from the suggestions, which fills the name and the position together.
  * @param {Function} props.onMoveStop - Called with (index, places) to move a stop up or down.
  * @param {Function} props.onRemoveStop - Called with the index to remove.
  * @param {Function} props.onAddStop - Called to append an empty stop.
@@ -27,6 +30,7 @@ export default function RouteStopEditor({
   stops,
   stopErrors,
   onChangeStop,
+  onChoosePlaceForStop,
   onMoveStop,
   onRemoveStop,
   onAddStop,
@@ -37,19 +41,19 @@ export default function RouteStopEditor({
     <View style={styles.editorBlock}>
       <Text style={typography.sectionHeading}>Stops in travel order</Text>
       <Text style={[typography.caption, styles.mutedText]}>
-        At least two: where the bus starts and where it ends. The fare is counted from the first stop.
+        At least two: where the bus starts and where it ends. Type a place name and pick it from the
+        list, and its position fills itself in. The fare is counted from the first stop.
       </Text>
 
       {stops.map((routeStop, stopIndex) => (
         <AppCard key={`stop-${stopIndex}`}>
           <View style={styles.stopBody}>
             <Text style={typography.label}>{`Stop ${stopIndex + ONE_PLACE}`}</Text>
-            <AppTextInput
-              label="Stop name"
-              placeholder="Koswatta"
-              value={routeStop.stopName}
-              onChangeText={(typedText) => onChangeStop(stopIndex, 'stopName', typedText)}
+            <StopPlaceField
+              stopName={routeStop.stopName}
               errorText={stopErrors[`${stopIndex}.stopName`]}
+              onChangeName={(typedText) => onChangeStop(stopIndex, 'stopName', typedText)}
+              onChoosePlace={(chosenPlace) => onChoosePlaceForStop(stopIndex, chosenPlace)}
             />
             <AppTextInput
               label="Latitude"
