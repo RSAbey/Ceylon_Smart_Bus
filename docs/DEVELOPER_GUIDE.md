@@ -285,17 +285,67 @@ If you change a signature, tell the group chat **before** merging.
 ## 10. Build & release
 
 ### Android APK, built on this laptop (no account, no cloud)
-Needs the Android SDK (Android Studio installs it) and a JDK. `mobile/android/` is generated and
-git-ignored, so it is rebuilt from `app.config.js` rather than edited by hand.
+Needs the Android SDK (Android Studio installs it) and **JDK 17 or 21**. `mobile/android/` is
+generated and git-ignored, so it is rebuilt from `app.config.js` rather than edited by hand.
+
+> **Use JDK 17 or 21, not 24 or newer.** On JDK 24+ the native build steps fail with
+> `Execution failed for task ':react-native-screens:configureCMakeRelWithDebInfo[arm64-v8a]'` and
+> the single line `WARNING: A restricted method in java.lang.System has been called`. That warning
+> is not the real problem in itself — the Android Gradle plugin treats anything the CMake step
+> writes to stderr as a failure, and JDK 24 restricted the native access those tools use. It costs
+> 25 minutes to find out, because it fails late. Point `JAVA_HOME` at a JDK 21 for the build:
+> ```bash
+> export JAVA_HOME="/c/Program Files/Java/jdk-21"   # PowerShell: $env:JAVA_HOME="C:\Program Files\Java\jdk-21"
+> ```
+
+> **Build from a short path on Windows.** The C++ parts of `react-native-screens` and
+> `react-native-worklets` fail when the repository sits somewhere deep. What ninja prints is
+> `ninja: error: manifest 'build.ninja' still dirty after 100 tries`, but the real reason is further
+> up the log: `The object file directory ... has 204 characters. The maximum full path to an object
+> file is 250 characters`. Windows cannot write the object files, so CMake regenerates for ever and
+> ninja gives up. A path such as `E:\Documents\University\3rd Year\...\Ceylon_Smart_Bus` is already
+> too deep before `node_modules` is added to it.
+>
+> **The clone has to actually be at a short path. An alias does not work** — this was tried and it
+> does not, so do not spend an evening on it:
+> - A **junction** (`New-Item -ItemType Junction`) is a reparse point. Gradle keeps the short path,
+>   but Node resolves its own files back to the real one, and bundling dies with
+>   `this and base files have different roots`.
+> - A **`subst` drive** survives `fs.realpath` and Java's `getCanonicalPath`, so it looks promising —
+>   but `expo-modules-autolinking` writes the *real* path of every native module into
+>   `mobile/android/build/generated/autolinking/autolinking.json`, and CMake follows what is written
+>   there whatever drive Gradle was run from. The long path comes straight back.
+>
+> So: `git clone` into `C:\dev\Ceylon_Smart_Bus` (or move the folder there) and build from there.
+>
+> If you do change path, delete the generated output first, or nothing changes:
+> ```bash
+> rm -rf mobile/android/build mobile/android/app/build mobile/android/.gradle
+> rm -rf mobile/node_modules/*/android/.cxx
+> ```
+>
+> Building on EAS avoids all of this, because it builds on Linux where these limits do not exist.
+
+The whole recipe, from a clone that is already at a short path:
 ```bash
+# 1. a JDK the Android plugin accepts
+export JAVA_HOME="/c/Program Files/Java/jdk-21"
+
+# 2. generate android/ from app.config.js
 cd mobile
-npx expo prebuild --platform android --clean     # regenerates android/ from app.config.js
-# tell Gradle where the SDK is (once, after each --clean):
-#   mobile/android/local.properties  ->  sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk
+npm install
+npx expo prebuild --platform android --clean
+
+# 3. tell Gradle where the SDK is (once, and again after every --clean)
+echo "sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk" > android/local.properties
+
+# 4. build, with the API address baked in
 cd android
-EXPO_PUBLIC_API_URL="http://<laptop-LAN-IP>:5000/api" ./gradlew assembleRelease
+EXPO_PUBLIC_API_URL="https://<your-api>.vercel.app/api" ./gradlew assembleRelease
+
 # the APK lands in mobile/android/app/build/outputs/apk/release/app-release.apk
 ```
+Install it on a phone with `adb install -r app-release.apk`, or copy the file across and open it.
 
 **`EXPO_PUBLIC_API_URL` must be set on the build command.** It is baked into the APK at build time.
 Without it the app falls back to the Expo dev-server host, which a standalone APK does not have, and
@@ -317,7 +367,71 @@ eas build:configure                        # first time only
 eas build -p android --profile preview     # outputs an .apk download link
 ```
 Download the APK → test on a real phone → attach to GitHub Release `v1.0.0` → link it in the README.
-Admin + API: push `main`; Vercel auto-deploys. Open the hosted admin URL and run the smoke test (login → each page loads).
+### Hosting the API and the dashboard on Vercel
+
+Two projects from the one repository. Everything they need is already committed —
+`server/vercel.json`, `server/api/index.js` and `admin/vercel.json` — so this is configuration only.
+
+**Before the first deploy.** In Atlas, set **Network Access → Allow access from anywhere
+(`0.0.0.0/0`)**. Vercel functions have no fixed IP, so an allowlist of one laptop rejects them, and
+the symptom is requests that simply hang until they time out.
+
+**1. The API.** New Project → import the repo → **Root Directory: `server`**. Environment variables:
+
+| Name | Value |
+|---|---|
+| `MONGODB_URI` | the Atlas connection string |
+| `JWT_SECRET` | a long random string |
+| `JWT_EXPIRES_IN` | `7d` |
+| `NODE_ENV` | `development` — see below |
+| `RESEND_API_KEY` | the Resend key |
+| `CLIENT_ORIGINS` | the admin URL, once it exists (step 3) |
+
+Deploy, then open `https://<api>.vercel.app/api/health`. If that does not answer, nothing else can
+work: check Atlas network access, the connection string, and that `JWT_SECRET` is set — the API
+refuses to start without it.
+
+**2. The dashboard, on Netlify.** The API is an Express server, so it belongs on Vercel; the
+dashboard is a static Vite build, which Netlify serves happily. `netlify.toml` at the repository
+root already carries the build settings, so nothing needs typing into the Netlify UI:
+
+- netlify.com → **Add new site → Import an existing project** → pick the repository.
+- Leave the build settings alone. Netlify reads `netlify.toml`, which sets the base directory to
+  `admin`, the command to `npm run build` and the publish directory to `admin/dist`.
+- **Site configuration → Environment variables → Add:**
+  `VITE_API_URL = https://<api>.vercel.app/api`
+- **Deploy.**
+
+> **Add the variable before the first build, or add it and then redeploy.** Vite bakes
+> `VITE_API_URL` into the JavaScript at build time; it is not read when the page loads. A site built
+> without it ships with `baseURL: undefined` and every request fails, no matter what the variable
+> says afterwards. "Clear cache and deploy site" is what applies the change.
+
+`netlify.toml` also redirects every path to `index.html`. Without that, opening or refreshing a deep
+link such as `/fleet` asks Netlify for a file that does not exist and gets a 404 — the dashboard
+only works from the home page.
+
+**3. Join them up.** Set `CLIENT_ORIGINS` on the **API** project to the Netlify URL exactly, with no
+trailing slash, for example `https://ceylon-smart-bus.netlify.app`, then **redeploy the API** —
+environment changes do not reach a deployment that already exists. Without this the dashboard loads
+and every request fails CORS, which in the browser console reads as a network error rather than
+anything about origins. The mobile app is unaffected: apps send no `Origin` header, and
+`checkRequestOrigin` allows those.
+
+> **Why `NODE_ENV=development` on a hosted API.** In production the OTP is withheld from the API
+> response, and registration sends no email — so on a hosted API with `NODE_ENV=production`
+> **nobody can finish signing up**. Password reset does email, but Resend's shared sender only
+> delivers to the Resend account's own owner until a domain is verified. Running the hosted demo as
+> `development` keeps the codes in the response, exactly as they are locally, which is what the
+> screens already expect.
+>
+> It is a demo decision, not a production one, and the report should say so: codes travel in API
+> responses, so this deployment must not hold real users' data. The honest fix for a real
+> deployment is to verify a domain in Resend and email the registration code as well as the reset
+> code.
+
+Then rebuild the APK with `EXPO_PUBLIC_API_URL` pointing at the hosted API, and it works on any
+network with no laptop running.
 
 ## 11. README must contain (examiner checklist)
 Project overview · architecture diagram · tech stack · folder structure · prerequisites · setup for server/admin/mobile · env variables (names only) ·

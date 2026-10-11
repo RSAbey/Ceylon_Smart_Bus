@@ -83,11 +83,24 @@ function buildMapDocument() {
         drawnLayer.clearLayers();
         var plottedPoints = [];
 
-        if (payload.stops.length > 1) {
-          L.polyline(
-            payload.stops.map(function (routeStop) { return [routeStop.latitude, routeStop.longitude]; }),
-            { color: '${colors.primary[500]}', weight: 5, opacity: 0.8 }
-          ).addTo(drawnLayer);
+        function toLatLngs(pathPoints) {
+          return pathPoints.map(function (pathPoint) {
+            return [pathPoint.latitude, pathPoint.longitude];
+          });
+        }
+
+        // The part already covered, faint and dashed: it is context, not the thing being waited for.
+        if (payload.pathTravelled.length > 1) {
+          L.polyline(toLatLngs(payload.pathTravelled), {
+            color: '${colors.text.disabled}', weight: 4, opacity: 0.8, dashArray: '6 8'
+          }).addTo(drawnLayer);
+        }
+
+        // The part still to come, starting at the bus itself — the journey actually left to make.
+        if (payload.pathAhead.length > 1) {
+          L.polyline(toLatLngs(payload.pathAhead), {
+            color: '${colors.primary[600]}', weight: 6, opacity: 0.95, lineCap: 'round'
+          }).addTo(drawnLayer);
         }
 
         payload.stops.forEach(function (routeStop) {
@@ -138,6 +151,9 @@ function buildMapDocument() {
  *   Route stops in travel order.
  * @param {string} [props.currentStopId] - Stop the bus has most recently reached, drawn larger.
  * @param {{latitude: number, longitude: number} | null} [props.busPosition] - Where the bus is now.
+ * @param {Array<{latitude: number, longitude: number}>} [props.pathAhead] - The leg still in front of
+ *   the bus, starting at the bus itself. The API works this out, so every map draws the same line.
+ * @param {Array<{latitude: number, longitude: number}>} [props.pathTravelled] - The leg behind it.
  * @param {string} [props.busLabel] - Wording on the bus marker's tooltip.
  * @param {string} props.accessibilityLabel - What the map shows, for a screen reader.
  * @param {object} [props.style] - Size of the map; it fills whatever it is given.
@@ -147,6 +163,8 @@ export default function RouteMap({
   stops,
   currentStopId,
   busPosition = null,
+  pathAhead = [],
+  pathTravelled = [],
   busLabel = MAP_MESSAGES.busLabel,
   accessibilityLabel,
   style,
@@ -168,8 +186,11 @@ export default function RouteMap({
         currentStopId: currentStopId ? String(currentStopId) : null,
         bus: busPosition,
         busLabel,
+        // Worked out by the server, so the phone and the admin map draw the same line.
+        pathAhead,
+        pathTravelled,
       }),
-    [stops, currentStopId, busPosition, busLabel]
+    [stops, currentStopId, busPosition, busLabel, pathAhead, pathTravelled]
   );
 
   useEffect(() => {

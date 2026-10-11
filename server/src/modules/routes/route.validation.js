@@ -1,5 +1,5 @@
 // express-validator rules for route management (Member 02).
-const { body } = require('express-validator');
+const { body, query } = require('express-validator');
 const {
   ROUTE_STATUSES,
   SERVICE_TIME_PATTERN,
@@ -111,7 +111,18 @@ const adjustRouteFaresValidationRules = [
     ),
 ];
 
+const MIN_PLACE_QUERY_LENGTH = 2;
+const MAX_PLACE_QUERY_LENGTH = 120;
+
+const placeSuggestionValidationRules = [
+  query('query')
+    .trim()
+    .isLength({ min: MIN_PLACE_QUERY_LENGTH, max: MAX_PLACE_QUERY_LENGTH })
+    .withMessage(`Type at least ${MIN_PLACE_QUERY_LENGTH} characters to search for a place.`),
+];
+
 module.exports = {
+  placeSuggestionValidationRules,
   createRouteValidationRules,
   updateRouteValidationRules,
   adjustRouteFaresValidationRules,

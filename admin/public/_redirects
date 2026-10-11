@@ -1,0 +1,5 @@
+# Single-page app fallback, copied into dist/ by Vite at build time.
+# React Router decides the page from the path, so every path has to be answered with index.html.
+# This belongs here as well as in netlify.toml: it ships inside the built output, so it works even
+# if Netlify is reading build settings from somewhere other than the file you expect.
+/*    /index.html   200

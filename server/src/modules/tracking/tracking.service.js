@@ -9,6 +9,7 @@ const { TRIP_STATUSES } = require('../trips/trip.constants');
 const delayService = require('../delays/delay.service');
 const ticketService = require('../tickets/ticket.service');
 const { getDistanceInKm } = require('../../utils/geoDistance');
+const { splitRoutePathAtBus } = require('../../utils/routePath');
 const AppError = require('../../utils/AppError');
 const HTTP_STATUS = require('../../utils/httpStatus');
 const {
@@ -137,14 +138,21 @@ async function getTripTracking(tripId, targetStopId) {
   const hasUsablePosition =
     isTripRunning && positionAgeSeconds !== null && positionAgeSeconds <= LOCATION_STALE_AFTER_SECONDS;
 
+  const busPosition = hasUsablePosition
+    ? { latitude: trackedTrip.lastLatitude, longitude: trackedTrip.lastLongitude }
+    : null;
+  // The line the map draws: what is still in front of the bus, starting at the bus itself, and what
+  // it has already covered. With no fresh position the whole route is "ahead", which is honest.
+  const routePath = splitRoutePathAtBus(orderedStops, busPosition);
+
   const trackingCard = {
     tripId: trackedTrip.id,
     route: trackedTrip.routeId,
     bus: trackedTrip.busId,
     stops: orderedStops,
-    position: hasUsablePosition
-      ? { latitude: trackedTrip.lastLatitude, longitude: trackedTrip.lastLongitude }
-      : null,
+    position: busPosition,
+    pathAhead: routePath.ahead,
+    pathTravelled: routePath.travelled,
     positionAgeSeconds,
     delayMinutes,
     // Without a fresh position there is no honest arrival time, so the app shows "Disrupted".
@@ -316,6 +324,9 @@ async function buildFleetRow(runningTrip, orderedStops) {
     isStranded: positionAgeSeconds === null || positionAgeSeconds >= STRANDED_TRIP_AFTER_SECONDS,
     passengerCount: ticketHolderIds.length,
     startedAt: runningTrip.startedAt,
+    // What is still in front of this bus, so the fleet map can draw the leg that matters rather
+    // than the whole route for every bus on it.
+    pathAhead: splitRoutePathAtBus(orderedStops, hasUsablePosition ? busPosition : null).ahead,
     ...summariseRouteProgress(hasUsablePosition ? busPosition : null, orderedStops),
   };
 }

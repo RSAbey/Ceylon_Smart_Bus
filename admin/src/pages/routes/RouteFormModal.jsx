@@ -4,7 +4,8 @@ import { useState } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
-import RouteStopEditor, { buildEmptyStop } from './RouteStopEditor';
+import LiveMap from '../../components/ui/LiveMap';
+import RouteStopEditor, { buildEmptyStop, hasChosenPlace } from './RouteStopEditor';
 import {
   MIN_STOPS_PER_ROUTE,
   ROUTE_MESSAGES,
@@ -12,10 +13,8 @@ import {
   SERVICE_TIME_PATTERN,
 } from './routeConstants';
 
-const MIN_LATITUDE = -90;
-const MAX_LATITUDE = 90;
-const MIN_LONGITUDE = -180;
-const MAX_LONGITUDE = 180;
+/** The draft route drawn on the preview map is not a saved route, so it needs an id of its own. */
+const DRAFT_ROUTE_ID = 'draft-route';
 
 /**
  * Builds the starting form values, empty for a new route or filled from the one being edited.
@@ -40,9 +39,10 @@ function buildInitialForm(routeDetails) {
           stopName: routeStop.stopName,
           latitude: String(routeStop.latitude),
           longitude: String(routeStop.longitude),
+          placeDescription: '',
           fareFromOrigin: String(routeStop.fareFromOrigin),
         }))
-      : [buildEmptyStop([]), buildEmptyStop([])],
+      : [buildEmptyStop(), buildEmptyStop()],
   };
 }
 
@@ -111,23 +111,13 @@ export default function RouteFormModal({
     if (namedStops.length < MIN_STOPS_PER_ROUTE) {
       foundErrors.stops = ROUTE_MESSAGES.tooFewStops;
     } else {
-      const hasBadPosition = namedStops.some((routeStop) => {
-        const stopLatitude = Number(routeStop.latitude);
-        const stopLongitude = Number(routeStop.longitude);
-        return (
-          Number.isNaN(stopLatitude) ||
-          Number.isNaN(stopLongitude) ||
-          stopLatitude < MIN_LATITUDE ||
-          stopLatitude > MAX_LATITUDE ||
-          stopLongitude < MIN_LONGITUDE ||
-          stopLongitude > MAX_LONGITUDE
-        );
-      });
+      // A stop only has a position because a place was chosen for it, so that is what is checked.
+      const unchosenStops = namedStops.filter((routeStop) => !hasChosenPlace(routeStop));
       const hasBadFare = namedStops.some(
         (routeStop) => Number.isNaN(Number(routeStop.fareFromOrigin)) || Number(routeStop.fareFromOrigin) < 0
       );
-      if (hasBadPosition) {
-        foundErrors.stops = 'Every stop needs a valid latitude and longitude. Open Details on a stop to set them.';
+      if (unchosenStops.length > 0) {
+        foundErrors.stops = `Choose ${unchosenStops.map((routeStop) => routeStop.stopName.trim()).join(', ')} from the suggestion list, so the stop has a position on the map.`;
       } else if (hasBadFare) {
         foundErrors.stops = 'Every stop needs a fare from the first stop, in rupees.';
       }
@@ -150,7 +140,7 @@ export default function RouteFormModal({
       perKmRate: routeForm.perKmRate ? Number(routeForm.perKmRate) : undefined,
       status: routeForm.status,
       stops: routeForm.stops
-        .filter((routeStop) => routeStop.stopName.trim().length > 0)
+        .filter((routeStop) => routeStop.stopName.trim().length > 0 && hasChosenPlace(routeStop))
         .map((routeStop) => ({
           stopName: routeStop.stopName.trim(),
           latitude: Number(routeStop.latitude),
@@ -163,6 +153,18 @@ export default function RouteFormModal({
   const fieldErrors = { ...localFieldErrors, ...serverFieldErrors };
   const isSuspended = routeForm.status === ROUTE_STATUSES.SUSPENDED;
   const hasRecentDelays = delaySummary?.delayReportCount > 0;
+
+  // Only stops that actually have a position can be drawn; a half-typed row is skipped rather than
+  // thrown at the map as NaN.
+  const plottableStops = routeForm.stops
+    .map((routeStop) => ({
+      stopName: routeStop.stopName || 'Unnamed stop',
+      latitude: Number(routeStop.latitude),
+      longitude: Number(routeStop.longitude),
+    }))
+    .filter(
+      (routeStop) => Number.isFinite(routeStop.latitude) && Number.isFinite(routeStop.longitude)
+    );
 
   return (
     <Modal
@@ -291,6 +293,21 @@ export default function RouteFormModal({
         onChangeStops={(nextStops) => changeField('stops', nextStops)}
         errorText={fieldErrors.stops}
       />
+
+      {plottableStops.length > 0 && (
+        <div className="route-preview">
+          <span className="text-label">Where these stops are</span>
+          <p className="text-caption text-muted">
+            The stops with a position, in order, on the same map the live fleet uses. Check the line
+            runs the way the bus does before saving.
+          </p>
+          <LiveMap
+            buses={[]}
+            routePaths={[{ routeId: DRAFT_ROUTE_ID, stops: plottableStops }]}
+            isCompact
+          />
+        </div>
+      )}
 
       {hasRecentDelays && (
         <p className="form-notice form-notice--warning">

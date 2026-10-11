@@ -1343,3 +1343,109 @@ a {
 .delay-summary__entry:last-child {
   border-bottom: 0;
 }
+
+/* ---- Stop place search (route form) -------------------------------------------------------- */
+/* The stop name field and the list of places under it. The list is positioned over what follows,
+   so adding a stop does not push the rest of the dialog around while someone is reading it. */
+.stop-search {
+  position: relative;
+  flex: 1;
+}
+
+.stop-search__status {
+  margin-top: var(--space-xxs);
+  color: var(--text-secondary);
+}
+
+.stop-search__list {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  margin: var(--space-xxs) 0 0;
+  padding: var(--space-xxs);
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+}
+
+.stop-search__option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: var(--space-sm);
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.stop-search__option:hover,
+.stop-search__option:focus-visible {
+  background: var(--primary-100);
+}
+
+.stop-search__option-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  min-width: 0;
+}
+
+.stop-search__option-name {
+  font-weight: 600;
+}
+
+.stop-search__option-address {
+  overflow-wrap: anywhere;
+}
+
+.stop-editor__origin {
+  grid-column: 1 / -1;
+}
+
+/* ---- Route preview map (route form) -------------------------------------------------------- */
+.route-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+/* The leg a bus still has to travel, drawn over the faint whole route. Thicker and solid, because
+   this is the part a waiting passenger or a watching administrator actually cares about. */
+.live-map__route-ahead {
+  stroke: var(--primary-600);
+  stroke-width: 6;
+  stroke-opacity: 0.95;
+  stroke-linecap: round;
+}
+
+/* The chosen place under a stop row: which "Borella" this is, so two of the same name never get
+   mixed up. The unchosen note is the nudge to pick one, since that is what gives it a position. */
+.stop-editor__chosen,
+.stop-editor__unchosen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: var(--space-xxs) 0 0 var(--space-xxl);
+}
+
+.stop-editor__chosen {
+  color: var(--text-secondary);
+}
+
+.stop-editor__unchosen {
+  color: var(--warning-dark);
+}
+
+.stop-editor__fare {
+  width: 110px;
+  flex: 0 0 auto;
+}

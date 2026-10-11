@@ -61,7 +61,9 @@ function buildTooltip(tooltipText) {
  * Street map of the buses currently reporting a position.
  * @param {object} props - Component props.
  * @param {Array<{tripId: string, label: string, caption: string, liveStatus: string,
- *   position: {latitude: number, longitude: number}}>} props.buses - Buses to plot.
+ *   position: {latitude: number, longitude: number},
+ *   pathAhead: Array<{latitude: number, longitude: number}>}>} props.buses - Buses to plot, each
+ *   with the leg of its route still in front of it.
  * @param {Array<{routeId: string, stops: object[]}>} [props.routePaths] - Route lines to draw under them.
  * @param {string | null} [props.focusedTripId] - Bus to centre on.
  * @param {Function} [props.onFocusBus] - Called with a trip id when a marker is clicked.
@@ -131,6 +133,18 @@ export default function LiveMap({
 
     buses.forEach((bus) => {
       const busPoint = [bus.position.latitude, bus.position.longitude];
+
+      // The leg still in front of this bus, drawn over the faint whole route. It begins at the bus
+      // itself, so what is shown is the journey left to make rather than the route on paper.
+      const aheadPoints = (bus.pathAhead || []).map((pathPoint) => [
+        pathPoint.latitude,
+        pathPoint.longitude,
+      ]);
+      if (aheadPoints.length > 1) {
+        L.polyline(aheadPoints, { className: 'live-map__route-ahead' }).addTo(drawnLayer);
+        plottedPoints.push(...aheadPoints);
+      }
+
       const busMarker = L.marker(busPoint, {
         icon: buildBusIcon(bus.liveStatus, bus.tripId === focusedTripId),
         keyboard: false,

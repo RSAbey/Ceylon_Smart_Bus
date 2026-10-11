@@ -1,0 +1,25 @@
+# Netlify build settings for the admin dashboard.
+#
+# This file sits at the repository root because that is where Netlify looks for it by default, which
+# means the site needs no build settings typed into the Netlify UI. The repository holds three
+# projects; `base` is what points Netlify at the dashboard and ignores the other two.
+#
+# The API is not deployed here. It is a Vercel project (see README.md), because it is an Express
+# server rather than a static site.
+
+[build]
+  # Everything below is relative to this directory.
+  base = "admin"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# The dashboard is a single-page app: React Router decides what to show from the path, and the
+# server only ever has index.html to give. Without this, opening or refreshing a deep link such as
+# /fleet asks Netlify for a file that does not exist and returns 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

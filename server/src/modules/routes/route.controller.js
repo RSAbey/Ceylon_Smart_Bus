@@ -1,5 +1,6 @@
 // HTTP layer for routes: reads the request, calls route.service, sends the envelope.
 const routeService = require('./route.service');
+const placeSearchService = require('./placeSearch.service');
 const asyncHandler = require('../../utils/asyncHandler');
 const sendResponse = require('../../utils/sendResponse');
 const HTTP_STATUS = require('../../utils/httpStatus');
@@ -120,7 +121,20 @@ async function deleteRoute(request, response) {
   sendResponse(response, 'Route deleted.');
 }
 
+/**
+ * GET /api/admin/routes/place-suggestions?query= — places matching what the administrator typed,
+ * so a stop can be picked from a list instead of its coordinates being typed by hand.
+ * @param {import('express').Request} request - Express request.
+ * @param {import('express').Response} response - Express response.
+ * @returns {Promise<void>} Resolves when the response is sent.
+ */
+async function suggestPlaces(request, response) {
+  const suggestions = await placeSearchService.searchPlaces(request.query.query);
+  sendResponse(response, 'Places found.', { suggestions });
+}
+
 module.exports = {
+  suggestPlaces: asyncHandler(suggestPlaces),
   searchRoutes: asyncHandler(searchRoutes),
   listRoutesForAdmin: asyncHandler(listRoutesForAdmin),
   listStopNames: asyncHandler(listStopNames),

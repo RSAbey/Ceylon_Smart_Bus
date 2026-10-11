@@ -145,6 +145,7 @@ export default function OverviewPage() {
       caption: `route ${fleetRow.route?.routeNumber} · ${describeLiveStatus(fleetRow).label}`,
       liveStatus: fleetRow.liveStatus,
       position: fleetRow.position,
+      pathAhead: fleetRow.pathAhead,
     }));
   const summarisedDelays = openDelays.slice(0, DELAY_SUMMARY_LIMIT);
 
