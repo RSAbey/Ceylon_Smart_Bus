@@ -1,0 +1,26 @@
+# Netlify build settings for the admin dashboard, for a site whose **base directory is `admin`**.
+#
+# There are two of these on purpose. Netlify looks for netlify.toml in the base directory when one
+# is set in the site's build settings, and in the repository root when it is not. The root copy sets
+# `base = "admin"` for the second case; this copy covers the first. Whichever Netlify reads, the
+# answer is the same: build with Vite and publish the built output, never the source.
+#
+# Publishing the source is what happens when neither is found: the browser is handed
+# admin/index.html, which asks for /src/main.jsx, which Netlify serves as application/octet-stream
+# because it is not JavaScript it knows how to label — and a module script with that MIME type is
+# refused, leaving a white page.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# The dashboard is a single-page app: React Router decides what to show from the path, and the
+# server only ever has index.html to give. Without this, opening or refreshing a deep link such as
+# /fleet asks Netlify for a file that does not exist and returns 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
