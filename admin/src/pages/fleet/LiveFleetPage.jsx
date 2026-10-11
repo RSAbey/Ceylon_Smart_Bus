@@ -110,6 +110,7 @@ export default function LiveFleetPage() {
       caption: `route ${fleetRow.route?.routeNumber} · ${describeLiveStatus(fleetRow).label}`,
       liveStatus: fleetRow.liveStatus,
       position: fleetRow.position,
+      pathAhead: fleetRow.pathAhead,
     }));
   const unplottedCount = visibleFleet.length - plottedBuses.length;
 

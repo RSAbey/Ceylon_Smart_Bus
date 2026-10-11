@@ -309,6 +309,8 @@ export default function DriverTripScreen() {
           currentStopId={trackingCard?.currentStopId}
           busPosition={busPosition}
           busLabel={MAP_MESSAGES.driverBusLabel}
+          pathAhead={trackingCard?.pathAhead || []}
+          pathTravelled={trackingCard?.pathTravelled || []}
           accessibilityLabel={`Map of route ${route?.routeNumber} showing your bus`}
         />
       </View>

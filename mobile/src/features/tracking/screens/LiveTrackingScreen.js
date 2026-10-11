@@ -93,6 +93,8 @@ export default function LiveTrackingScreen() {
         currentStopId={trackingCard?.currentStopId}
         busPosition={busPosition}
         busLabel={`Bus ${trackingCard?.route?.routeNumber}`}
+        pathAhead={trackingCard?.pathAhead || []}
+        pathTravelled={trackingCard?.pathTravelled || []}
         accessibilityLabel={`Map showing route ${trackingCard?.route?.routeNumber}`}
       />
 

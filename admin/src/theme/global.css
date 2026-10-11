@@ -1417,3 +1417,12 @@ a {
   flex-direction: column;
   gap: var(--space-xs);
 }
+
+/* The leg a bus still has to travel, drawn over the faint whole route. Thicker and solid, because
+   this is the part a waiting passenger or a watching administrator actually cares about. */
+.live-map__route-ahead {
+  stroke: var(--primary-600);
+  stroke-width: 6;
+  stroke-opacity: 0.95;
+  stroke-linecap: round;
+}
