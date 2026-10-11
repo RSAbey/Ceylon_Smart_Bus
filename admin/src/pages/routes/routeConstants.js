@@ -39,8 +39,20 @@ export const ROUTE_MESSAGES = Object.freeze({
   stopsHint:
     'In travel order. Each stop needs a position and a fare from the first stop, because the live map and the ETA are built from them.',
   addStop: 'Add stop',
+  searchHint: 'Start typing a place and pick it from the list — the position fills itself in.',
+  searching: 'Looking for places...',
+  noPlacesFound: 'No place of that name was found. Type the coordinates under Details instead.',
+  positionFromMap: 'Position taken from the map',
+  positionTypedIn: 'Position typed in',
   suspend: 'Suspend route',
   tooFewStops: 'Add at least two stops: where the route starts and where it ends.',
   fareOrderWarning:
     'Fares should not fall along the route. Check the fare from the first stop on each row.',
 });
+
+/** Wait this long after the last keystroke before asking for suggestions. The geocoder asks for no
+ *  more than one request a second, and nobody wants a request per letter either. */
+export const PLACE_SEARCH_DEBOUNCE_MS = 450;
+
+/** Below this many characters a search is not worth making. Matches the server's own rule. */
+export const MIN_PLACE_QUERY_LENGTH = 2;

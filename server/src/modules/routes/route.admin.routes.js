@@ -5,6 +5,7 @@ const {
   createRouteValidationRules,
   updateRouteValidationRules,
   adjustRouteFaresValidationRules,
+  placeSuggestionValidationRules,
 } = require('./route.validation');
 const authenticateToken = require('../../middleware/authenticateToken');
 const authorizeRoles = require('../../middleware/authorizeRoles');
@@ -19,6 +20,13 @@ routeAdminRouter.use(authenticateToken, authorizeRoles(USER_ROLES.ADMIN));
 routeAdminRouter.get('/', routeController.searchRoutes);
 // Must sit above /:routeId so "table" is never read as a route id.
 routeAdminRouter.get('/table', routeController.listRoutesForAdmin);
+// Also above /:routeId, so "place-suggestions" is never read as a route id.
+routeAdminRouter.get(
+  '/place-suggestions',
+  placeSuggestionValidationRules,
+  validateRequest,
+  routeController.suggestPlaces
+);
 routeAdminRouter.get('/:routeId', routeController.getRouteDetails);
 routeAdminRouter.post('/', createRouteValidationRules, validateRequest, routeController.createRoute);
 routeAdminRouter.patch('/:routeId', updateRouteValidationRules, validateRequest, routeController.updateRoute);

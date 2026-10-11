@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
+import LiveMap from '../../components/ui/LiveMap';
 import RouteStopEditor, { buildEmptyStop } from './RouteStopEditor';
 import {
   MIN_STOPS_PER_ROUTE,
@@ -11,6 +12,9 @@ import {
   ROUTE_STATUSES,
   SERVICE_TIME_PATTERN,
 } from './routeConstants';
+
+/** The draft route drawn on the preview map is not a saved route, so it needs an id of its own. */
+const DRAFT_ROUTE_ID = 'draft-route';
 
 const MIN_LATITUDE = -90;
 const MAX_LATITUDE = 90;
@@ -164,6 +168,18 @@ export default function RouteFormModal({
   const isSuspended = routeForm.status === ROUTE_STATUSES.SUSPENDED;
   const hasRecentDelays = delaySummary?.delayReportCount > 0;
 
+  // Only stops that actually have a position can be drawn; a half-typed row is skipped rather than
+  // thrown at the map as NaN.
+  const plottableStops = routeForm.stops
+    .map((routeStop) => ({
+      stopName: routeStop.stopName || 'Unnamed stop',
+      latitude: Number(routeStop.latitude),
+      longitude: Number(routeStop.longitude),
+    }))
+    .filter(
+      (routeStop) => Number.isFinite(routeStop.latitude) && Number.isFinite(routeStop.longitude)
+    );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -291,6 +307,21 @@ export default function RouteFormModal({
         onChangeStops={(nextStops) => changeField('stops', nextStops)}
         errorText={fieldErrors.stops}
       />
+
+      {plottableStops.length > 0 && (
+        <div className="route-preview">
+          <span className="text-label">Where these stops are</span>
+          <p className="text-caption text-muted">
+            The stops with a position, in order, on the same map the live fleet uses. Check the line
+            runs the way the bus does before saving.
+          </p>
+          <LiveMap
+            buses={[]}
+            routePaths={[{ routeId: DRAFT_ROUTE_ID, stops: plottableStops }]}
+            isCompact
+          />
+        </div>
+      )}
 
       {hasRecentDelays && (
         <p className="form-notice form-notice--warning">

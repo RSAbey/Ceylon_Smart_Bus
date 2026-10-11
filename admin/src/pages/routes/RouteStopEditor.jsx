@@ -8,6 +8,7 @@ import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
 import { DEFAULT_STOP_POSITION, ROUTE_MESSAGES } from './routeConstants';
+import StopPlaceSearch from './StopPlaceSearch';
 
 /**
  * Builds an empty stop, positioned near the previous one so an admin nudges rather than types.
@@ -51,6 +52,29 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
   }
 
   /**
+   * Fills one stop from a place the administrator picked out of the suggestion list: the name and
+   * the position together, which is the whole point of picking from a list.
+   * @param {number} stopIndex - Row being filled.
+   * @param {object} chosenPlace - The place that was chosen.
+   * @returns {void}
+   */
+  function takePlaceForStop(stopIndex, chosenPlace) {
+    onChangeStops(
+      stops.map((candidateStop, candidateIndex) =>
+        candidateIndex === stopIndex
+          ? {
+              ...candidateStop,
+              stopName: chosenPlace.stopName,
+              latitude: String(chosenPlace.latitude),
+              longitude: String(chosenPlace.longitude),
+              isPositionFromMap: true,
+            }
+          : candidateStop
+      )
+    );
+  }
+
+  /**
    * Removes one stop and closes the expanded panel, so it cannot point at the wrong row.
    * @param {number} stopIndex - Row to remove.
    * @returns {void}
@@ -64,7 +88,7 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
     <div className="stop-editor">
       <div className="stop-editor__heading">
         <span className="text-label">{ROUTE_MESSAGES.stopsHeading}</span>
-        <span className="text-caption text-muted">{ROUTE_MESSAGES.stopsHint}</span>
+        <span className="text-caption text-muted">{ROUTE_MESSAGES.searchHint}</span>
       </div>
 
       <ol className="stop-editor__list">
@@ -77,15 +101,12 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
             <li key={`stop-${stopIndex}`} className="stop-editor__item">
               <div className="stop-editor__row">
                 <span className="stop-editor__number">{stopIndex + 1}.</span>
-                <input
-                  type="text"
-                  className="form-field__input stop-editor__name"
-                  placeholder={`Stop name${positionLabel}`}
-                  aria-label={`Stop ${stopIndex + 1} name`}
-                  value={stopRow.stopName}
-                  onChange={(changeEvent) =>
-                    changeStopField(stopIndex, 'stopName', changeEvent.target.value)
-                  }
+                <StopPlaceSearch
+                  stopIndex={stopIndex}
+                  stopName={stopRow.stopName}
+                  positionLabel={positionLabel}
+                  onChangeName={(typedText) => changeStopField(stopIndex, 'stopName', typedText)}
+                  onChoosePlace={(chosenPlace) => takePlaceForStop(stopIndex, chosenPlace)}
                 />
                 <Button
                   label={isExpanded ? 'Hide details' : 'Details'}
@@ -107,6 +128,11 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
 
               {isExpanded && (
                 <div className="stop-editor__details">
+                  <p className="stop-editor__origin text-caption text-muted">
+                    {stopRow.isPositionFromMap
+                      ? ROUTE_MESSAGES.positionFromMap
+                      : ROUTE_MESSAGES.positionTypedIn}
+                  </p>
                   <FormField
                     fieldId={`stopLatitude-${stopIndex}`}
                     label="Latitude"
