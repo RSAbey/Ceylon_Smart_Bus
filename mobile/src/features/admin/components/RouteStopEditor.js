@@ -2,11 +2,17 @@
 // is the thing being edited: each stop can be moved up or down, and its position is shown as the
 // number passengers see. Dragging is deliberately not used — a drag handle beside four text fields
 // on a phone is easy to trigger by accident, and two arrows cannot be.
+//
+// A stop is a place and a fare. The place is searched for by name and chosen from a list, the way a
+// map app does it, and that choice is what gives the stop its position — latitude and longitude are
+// never shown or typed.
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AppCard from '../../../components/ui/AppCard';
 import AppButton from '../../../components/ui/AppButton';
 import AppTextInput from '../../../components/ui/AppTextInput';
-import { colors, spacing, typography } from '../../../theme';
+import { colors, sizes, spacing, typography } from '../../../theme';
+import { ADMIN_MESSAGES } from '../constants';
 import StopPlaceField from './StopPlaceField';
 
 const FIRST_STOP_INDEX = 0;
@@ -55,22 +61,26 @@ export default function RouteStopEditor({
               onChangeName={(typedText) => onChangeStop(stopIndex, 'stopName', typedText)}
               onChoosePlace={(chosenPlace) => onChoosePlaceForStop(stopIndex, chosenPlace)}
             />
-            <AppTextInput
-              label="Latitude"
-              placeholder="6.9065"
-              value={routeStop.latitude}
-              onChangeText={(typedText) => onChangeStop(stopIndex, 'latitude', typedText)}
-              errorText={stopErrors[`${stopIndex}.latitude`]}
-              keyboardType="numbers-and-punctuation"
-            />
-            <AppTextInput
-              label="Longitude"
-              placeholder="79.9215"
-              value={routeStop.longitude}
-              onChangeText={(typedText) => onChangeStop(stopIndex, 'longitude', typedText)}
-              errorText={stopErrors[`${stopIndex}.longitude`]}
-              keyboardType="numbers-and-punctuation"
-            />
+            {/* Which of several same-named places this is, so "Borella" is never ambiguous. The
+                position itself is never shown: choosing the place is what sets it. */}
+            {routeStop.placeDescription ? (
+              <View style={styles.chosenRow}>
+                <Ionicons
+                  name="location"
+                  size={sizes.iconSmall}
+                  color={colors.success.dark}
+                />
+                <Text style={[typography.caption, styles.chosenText]} numberOfLines={2}>
+                  {routeStop.placeDescription}
+                </Text>
+              </View>
+            ) : (
+              Boolean(routeStop.stopName.trim()) && (
+                <Text style={[typography.caption, styles.unchosenText]}>
+                  {ADMIN_MESSAGES.pickFromList}
+                </Text>
+              )
+            )}
             <AppTextInput
               label="Fare from the first stop (Rs.)"
               placeholder="40"
@@ -128,6 +138,18 @@ const styles = StyleSheet.create({
   },
   stopBody: {
     gap: spacing.md,
+  },
+  chosenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  chosenText: {
+    flex: 1,
+    color: colors.text.secondary,
+  },
+  unchosenText: {
+    color: colors.warning.dark,
   },
   stopActions: {
     flexDirection: 'row',

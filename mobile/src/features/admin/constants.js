@@ -195,6 +195,7 @@ export const ADMIN_MESSAGES = Object.freeze({
   placeSearching: 'Looking for places...',
   noPlacesFound: 'No place of that name was found. Type the position below instead.',
   positionFromMap: 'Position taken from the map',
+  pickFromList: 'Choose this place from the list so the stop has a position on the map.',
   deleteTitle: 'Delete this record?',
   deleteConfirmLabel: 'Delete',
 });

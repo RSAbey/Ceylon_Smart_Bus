@@ -1,28 +1,31 @@
 // The stop list inside the route dialog (Member 02).
-// Each row carries a name, a position and the fare from the first stop. The Figma design shows only
-// the name, but a stop without coordinates breaks the live map and the ETA, and without a fare the
-// segment price cannot be worked out — so those fields are collected here too, shown on demand to
-// keep the list as short as the design (recorded in docs/evidence/m02/deviations.md).
-import { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react';
+//
+// A stop is a place and a fare, nothing else. The place is searched for by name and chosen from a
+// list, the way a map app does it, and that choice is what gives the stop its position — latitude
+// and longitude are never shown or typed. Asking for coordinates is what produced routes whose
+// stops all sat on the same default point, with no line to draw.
+import { MapPin, Plus, X } from 'lucide-react';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
-import { DEFAULT_STOP_POSITION, ROUTE_MESSAGES } from './routeConstants';
+import { ROUTE_MESSAGES } from './routeConstants';
 import StopPlaceSearch from './StopPlaceSearch';
 
 /**
- * Builds an empty stop, positioned near the previous one so an admin nudges rather than types.
- * @param {object[]} existingStops - Stops already in the list.
+ * Builds an empty stop. It deliberately has no position: one arrives only by choosing a place from
+ * the list, so a stop can never quietly keep a default that belongs somewhere else.
  * @returns {object} A new stop row.
  */
-export function buildEmptyStop(existingStops) {
-  const previousStop = existingStops[existingStops.length - 1];
-  return {
-    stopName: '',
-    latitude: String(previousStop ? previousStop.latitude : DEFAULT_STOP_POSITION.latitude),
-    longitude: String(previousStop ? previousStop.longitude : DEFAULT_STOP_POSITION.longitude),
-    fareFromOrigin: previousStop ? previousStop.fareFromOrigin : '0',
-  };
+export function buildEmptyStop() {
+  return { stopName: '', latitude: '', longitude: '', placeDescription: '', fareFromOrigin: '0' };
+}
+
+/**
+ * Whether a stop has been given a real position by choosing a place.
+ * @param {object} routeStop - A stop row.
+ * @returns {boolean} True when it can be saved and drawn.
+ */
+export function hasChosenPlace(routeStop) {
+  return Number.isFinite(Number(routeStop.latitude)) && String(routeStop.latitude).trim() !== '';
 }
 
 /**
@@ -34,8 +37,6 @@ export function buildEmptyStop(existingStops) {
  * @returns {import('react').JSX.Element} The editor.
  */
 export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
-  const [expandedStopIndex, setExpandedStopIndex] = useState(null);
-
   /**
    * Changes one field on one stop without disturbing the others.
    * @param {number} stopIndex - Row being edited.
@@ -52,8 +53,8 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
   }
 
   /**
-   * Fills one stop from a place the administrator picked out of the suggestion list: the name and
-   * the position together, which is the whole point of picking from a list.
+   * Takes the place chosen from the list: its name, its position and the address that identifies
+   * which of several same-named places it is.
    * @param {number} stopIndex - Row being filled.
    * @param {object} chosenPlace - The place that was chosen.
    * @returns {void}
@@ -67,7 +68,7 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
               stopName: chosenPlace.stopName,
               latitude: String(chosenPlace.latitude),
               longitude: String(chosenPlace.longitude),
-              isPositionFromMap: true,
+              placeDescription: chosenPlace.description,
             }
           : candidateStop
       )
@@ -75,13 +76,29 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
   }
 
   /**
-   * Removes one stop and closes the expanded panel, so it cannot point at the wrong row.
+   * Clears a stop's name and the position that came with it, so a half-corrected stop cannot keep
+   * the position of the place it used to be.
+   * @param {number} stopIndex - Row being retyped.
+   * @param {string} typedText - What is in the field now.
+   * @returns {void}
+   */
+  function changeStopName(stopIndex, typedText) {
+    onChangeStops(
+      stops.map((candidateStop, candidateIndex) =>
+        candidateIndex === stopIndex
+          ? { ...candidateStop, stopName: typedText, latitude: '', longitude: '', placeDescription: '' }
+          : candidateStop
+      )
+    );
+  }
+
+  /**
+   * Removes one stop.
    * @param {number} stopIndex - Row to remove.
    * @returns {void}
    */
   function removeStop(stopIndex) {
     onChangeStops(stops.filter((_candidateStop, candidateIndex) => candidateIndex !== stopIndex));
-    setExpandedStopIndex(null);
   }
 
   return (
@@ -93,7 +110,6 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
 
       <ol className="stop-editor__list">
         {stops.map((stopRow, stopIndex) => {
-          const isExpanded = expandedStopIndex === stopIndex;
           const isFirstStop = stopIndex === 0;
           const isLastStop = stopIndex === stops.length - 1;
           const positionLabel = isFirstStop ? ' (start)' : isLastStop ? ' (end)' : '';
@@ -105,17 +121,19 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
                   stopIndex={stopIndex}
                   stopName={stopRow.stopName}
                   positionLabel={positionLabel}
-                  onChangeName={(typedText) => changeStopField(stopIndex, 'stopName', typedText)}
+                  onChangeName={(typedText) => changeStopName(stopIndex, typedText)}
                   onChoosePlace={(chosenPlace) => takePlaceForStop(stopIndex, chosenPlace)}
                 />
-                <Button
-                  label={isExpanded ? 'Hide details' : 'Details'}
-                  icon={isExpanded ? ChevronUp : ChevronDown}
-                  variant="text"
-                  size="small"
-                  ariaLabel={`${isExpanded ? 'Hide' : 'Show'} position and fare for stop ${stopIndex + 1}`}
-                  onClick={() => setExpandedStopIndex(isExpanded ? null : stopIndex)}
-                />
+                <div className="stop-editor__fare">
+                  <FormField
+                    fieldId={`stopFare-${stopIndex}`}
+                    label="Fare (Rs)"
+                    fieldText={String(stopRow.fareFromOrigin)}
+                    onFieldTextChange={(fieldText) =>
+                      changeStopField(stopIndex, 'fareFromOrigin', fieldText)
+                    }
+                  />
+                </div>
                 <Button
                   label="Remove"
                   icon={X}
@@ -126,41 +144,16 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
                 />
               </div>
 
-              {isExpanded && (
-                <div className="stop-editor__details">
-                  <p className="stop-editor__origin text-caption text-muted">
-                    {stopRow.isPositionFromMap
-                      ? ROUTE_MESSAGES.positionFromMap
-                      : ROUTE_MESSAGES.positionTypedIn}
-                  </p>
-                  <FormField
-                    fieldId={`stopLatitude-${stopIndex}`}
-                    label="Latitude"
-                    fieldText={String(stopRow.latitude)}
-                    onFieldTextChange={(fieldText) =>
-                      changeStopField(stopIndex, 'latitude', fieldText)
-                    }
-                    helperText="Between -90 and 90."
-                  />
-                  <FormField
-                    fieldId={`stopLongitude-${stopIndex}`}
-                    label="Longitude"
-                    fieldText={String(stopRow.longitude)}
-                    onFieldTextChange={(fieldText) =>
-                      changeStopField(stopIndex, 'longitude', fieldText)
-                    }
-                    helperText="Between -180 and 180."
-                  />
-                  <FormField
-                    fieldId={`stopFare-${stopIndex}`}
-                    label="Fare from the first stop (Rs)"
-                    fieldText={String(stopRow.fareFromOrigin)}
-                    onFieldTextChange={(fieldText) =>
-                      changeStopField(stopIndex, 'fareFromOrigin', fieldText)
-                    }
-                    helperText="A journey between two stops is priced from the difference."
-                  />
-                </div>
+              {/* Which of several same-named places this is, so "Borella" is never ambiguous. */}
+              {hasChosenPlace(stopRow) ? (
+                <p className="stop-editor__chosen text-caption">
+                  <MapPin size={13} aria-hidden="true" />
+                  {stopRow.placeDescription || ROUTE_MESSAGES.positionFromMap}
+                </p>
+              ) : (
+                stopRow.stopName.trim().length > 0 && (
+                  <p className="stop-editor__unchosen text-caption">{ROUTE_MESSAGES.pickFromList}</p>
+                )
               )}
             </li>
           );
@@ -173,7 +166,7 @@ export default function RouteStopEditor({ stops, onChangeStops, errorText }) {
         label={ROUTE_MESSAGES.addStop}
         icon={Plus}
         variant="outline"
-        onClick={() => onChangeStops([...stops, buildEmptyStop(stops)])}
+        onClick={() => onChangeStops([...stops, buildEmptyStop()])}
       />
     </div>
   );

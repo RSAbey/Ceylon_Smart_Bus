@@ -35,8 +35,19 @@ const EMPTY_STOP = Object.freeze({
   stopName: '',
   latitude: '',
   longitude: '',
+  placeDescription: '',
   fareFromOrigin: '',
 });
+
+/**
+ * Whether a stop has been given a position by choosing a place from the list. That choice is the
+ * only way a stop gets one, so it is what the form checks for.
+ * @param {object} routeStop - A stop row.
+ * @returns {boolean} True when the stop can be saved.
+ */
+function hasChosenPlace(routeStop) {
+  return String(routeStop.latitude).trim() !== '' && Number.isFinite(Number(routeStop.latitude));
+}
 
 /**
  * Checks one stop and returns its errors, keyed the way the editor expects.
@@ -49,11 +60,9 @@ function findStopErrors(routeStop, stopIndex) {
   if (!routeStop.stopName.trim()) {
     stopErrors[`${stopIndex}.stopName`] = 'Every stop needs a name.';
   }
-  if (!Number.isFinite(Number(routeStop.latitude)) || routeStop.latitude === '') {
-    stopErrors[`${stopIndex}.latitude`] = 'Enter the latitude, for example 6.9065.';
-  }
-  if (!Number.isFinite(Number(routeStop.longitude)) || routeStop.longitude === '') {
-    stopErrors[`${stopIndex}.longitude`] = 'Enter the longitude, for example 79.9215.';
+  if (routeStop.stopName.trim() && !hasChosenPlace(routeStop)) {
+    // The name was typed but no place was picked, so the stop has nowhere to be on the map.
+    stopErrors[`${stopIndex}.stopName`] = ADMIN_MESSAGES.pickFromList;
   }
   if (!Number.isFinite(Number(routeStop.fareFromOrigin)) || routeStop.fareFromOrigin === '') {
     stopErrors[`${stopIndex}.fareFromOrigin`] = 'Enter the fare from the first stop.';
@@ -110,6 +119,7 @@ export default function AdminRouteFormScreen() {
             stopName: loadedStop.stopName,
             latitude: String(loadedStop.latitude),
             longitude: String(loadedStop.longitude),
+            placeDescription: '',
             fareFromOrigin: String(loadedStop.fareFromOrigin),
           }))
         );
@@ -128,9 +138,21 @@ export default function AdminRouteFormScreen() {
 
   const changeStop = (stopIndex, fieldName, typedText) => {
     setStops((previousStops) =>
-      previousStops.map((previousStop, previousIndex) =>
-        previousIndex === stopIndex ? { ...previousStop, [fieldName]: typedText } : previousStop
-      )
+      previousStops.map((previousStop, previousIndex) => {
+        if (previousIndex !== stopIndex) return previousStop;
+        // Retyping the name drops the position that came with the old place, so a half-corrected
+        // stop cannot keep the position of somewhere it no longer names.
+        if (fieldName === 'stopName') {
+          return {
+            ...previousStop,
+            stopName: typedText,
+            latitude: '',
+            longitude: '',
+            placeDescription: '',
+          };
+        }
+        return { ...previousStop, [fieldName]: typedText };
+      })
     );
   };
 
@@ -150,6 +172,7 @@ export default function AdminRouteFormScreen() {
               stopName: chosenPlace.stopName,
               latitude: String(chosenPlace.latitude),
               longitude: String(chosenPlace.longitude),
+              placeDescription: chosenPlace.description,
             }
           : previousStop
       )

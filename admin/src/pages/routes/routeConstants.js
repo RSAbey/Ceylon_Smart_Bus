@@ -28,9 +28,6 @@ export const MIN_STOPS_PER_ROUTE = 2;
 /** Above this many delay reports in the window, the table highlights the route. */
 export const BUSY_DELAY_THRESHOLD = 3;
 
-/** Colombo, so a new stop starts somewhere sensible rather than in the ocean at 0,0. */
-export const DEFAULT_STOP_POSITION = Object.freeze({ latitude: 6.9271, longitude: 79.8612 });
-
 export const ROUTE_MESSAGES = Object.freeze({
   addTitle: 'Add route',
   addSubtitle: 'Create a new route with stops, schedule and fare',
@@ -39,11 +36,12 @@ export const ROUTE_MESSAGES = Object.freeze({
   stopsHint:
     'In travel order. Each stop needs a position and a fare from the first stop, because the live map and the ETA are built from them.',
   addStop: 'Add stop',
-  searchHint: 'Start typing a place and pick it from the list — the position fills itself in.',
+  searchHint:
+    'In travel order. Type a place and choose it from the list, the way you would on a map; that is what gives the stop its position.',
+  pickFromList: 'Choose this place from the list so the stop has a position on the map.',
   searching: 'Looking for places...',
   noPlacesFound: 'No place of that name was found. Type the coordinates under Details instead.',
   positionFromMap: 'Position taken from the map',
-  positionTypedIn: 'Position typed in',
   suspend: 'Suspend route',
   tooFewStops: 'Add at least two stops: where the route starts and where it ends.',
   fareOrderWarning:

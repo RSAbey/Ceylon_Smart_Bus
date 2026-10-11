@@ -5,7 +5,7 @@ import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 import FormField from '../../components/ui/FormField';
 import LiveMap from '../../components/ui/LiveMap';
-import RouteStopEditor, { buildEmptyStop } from './RouteStopEditor';
+import RouteStopEditor, { buildEmptyStop, hasChosenPlace } from './RouteStopEditor';
 import {
   MIN_STOPS_PER_ROUTE,
   ROUTE_MESSAGES,
@@ -15,11 +15,6 @@ import {
 
 /** The draft route drawn on the preview map is not a saved route, so it needs an id of its own. */
 const DRAFT_ROUTE_ID = 'draft-route';
-
-const MIN_LATITUDE = -90;
-const MAX_LATITUDE = 90;
-const MIN_LONGITUDE = -180;
-const MAX_LONGITUDE = 180;
 
 /**
  * Builds the starting form values, empty for a new route or filled from the one being edited.
@@ -44,9 +39,10 @@ function buildInitialForm(routeDetails) {
           stopName: routeStop.stopName,
           latitude: String(routeStop.latitude),
           longitude: String(routeStop.longitude),
+          placeDescription: '',
           fareFromOrigin: String(routeStop.fareFromOrigin),
         }))
-      : [buildEmptyStop([]), buildEmptyStop([])],
+      : [buildEmptyStop(), buildEmptyStop()],
   };
 }
 
@@ -115,23 +111,13 @@ export default function RouteFormModal({
     if (namedStops.length < MIN_STOPS_PER_ROUTE) {
       foundErrors.stops = ROUTE_MESSAGES.tooFewStops;
     } else {
-      const hasBadPosition = namedStops.some((routeStop) => {
-        const stopLatitude = Number(routeStop.latitude);
-        const stopLongitude = Number(routeStop.longitude);
-        return (
-          Number.isNaN(stopLatitude) ||
-          Number.isNaN(stopLongitude) ||
-          stopLatitude < MIN_LATITUDE ||
-          stopLatitude > MAX_LATITUDE ||
-          stopLongitude < MIN_LONGITUDE ||
-          stopLongitude > MAX_LONGITUDE
-        );
-      });
+      // A stop only has a position because a place was chosen for it, so that is what is checked.
+      const unchosenStops = namedStops.filter((routeStop) => !hasChosenPlace(routeStop));
       const hasBadFare = namedStops.some(
         (routeStop) => Number.isNaN(Number(routeStop.fareFromOrigin)) || Number(routeStop.fareFromOrigin) < 0
       );
-      if (hasBadPosition) {
-        foundErrors.stops = 'Every stop needs a valid latitude and longitude. Open Details on a stop to set them.';
+      if (unchosenStops.length > 0) {
+        foundErrors.stops = `Choose ${unchosenStops.map((routeStop) => routeStop.stopName.trim()).join(', ')} from the suggestion list, so the stop has a position on the map.`;
       } else if (hasBadFare) {
         foundErrors.stops = 'Every stop needs a fare from the first stop, in rupees.';
       }
@@ -154,7 +140,7 @@ export default function RouteFormModal({
       perKmRate: routeForm.perKmRate ? Number(routeForm.perKmRate) : undefined,
       status: routeForm.status,
       stops: routeForm.stops
-        .filter((routeStop) => routeStop.stopName.trim().length > 0)
+        .filter((routeStop) => routeStop.stopName.trim().length > 0 && hasChosenPlace(routeStop))
         .map((routeStop) => ({
           stopName: routeStop.stopName.trim(),
           latitude: Number(routeStop.latitude),

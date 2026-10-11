@@ -1426,3 +1426,26 @@ a {
   stroke-opacity: 0.95;
   stroke-linecap: round;
 }
+
+/* The chosen place under a stop row: which "Borella" this is, so two of the same name never get
+   mixed up. The unchosen note is the nudge to pick one, since that is what gives it a position. */
+.stop-editor__chosen,
+.stop-editor__unchosen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: var(--space-xxs) 0 0 var(--space-xxl);
+}
+
+.stop-editor__chosen {
+  color: var(--text-secondary);
+}
+
+.stop-editor__unchosen {
+  color: var(--warning-dark);
+}
+
+.stop-editor__fare {
+  width: 110px;
+  flex: 0 0 auto;
+}
